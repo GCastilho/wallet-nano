@@ -69,12 +69,7 @@
         }],
         "keyword-spacing": ["error", {
             "before": true,
-            "after": true,
-            "overrides": {
-                "case": {
-                    "after": false
-                }
-            }
+            "after": true
         }],
         "no-undef": [
             "off"
