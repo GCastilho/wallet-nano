@@ -1,8 +1,7 @@
-import validate from '../validation'
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
-import type { Schema } from '../validation'
+import { walletSchema } from '../models'
 
 const prisma = new PrismaClient()
 
@@ -22,19 +21,8 @@ export async function walletCreate() {
 	}
 }
 
-const walletSchema: Schema<{ wallet: string }> = {
-	type: 'object',
-	properties: {
-		wallet: {
-			type: 'string',
-			minLength: 36,
-			maxLength: 36,
-		}
-	}
-}
-
 export async function walletDestroy(input: Record<string, unknown>) {
-	const { wallet } = validate(walletSchema, input)
+	const { wallet } = walletSchema.validate(input)
 
 	const destroyed = await prisma.wallet.delete({
 		select: null,
