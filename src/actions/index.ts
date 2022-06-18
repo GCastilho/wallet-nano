@@ -1,1 +1,1 @@
-export * from './createWallet'
+export * from './wallet'
