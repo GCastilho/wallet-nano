@@ -20,14 +20,16 @@ app.post('/', async (req, res, next) => {
 		let handler: undefined|((body: JSON) => JSON|Promise<JSON>) = undefined
 
 		switch (action) {
+			case 'account_create': handler = actions.accountCreate; break
 			case 'wallet_create': handler = actions.walletCreate; break
 			case 'wallet_destroy': handler = actions.walletDestroy; break
 		}
 
 		if (handler) {
-			res.status(200).send(await handler(body))
+			const data = await handler(body)
+			res.status(200).send(data)
 		} else {
-			res.status(404).send('Method not found')
+			res.status(404).send({ error: 'Method not found' })
 		}
 	} catch (err) {
 		next(err)
@@ -50,6 +52,11 @@ app.use((
 	} else if (err instanceof AssertionError) {
 		res.status(400).send({
 			error: err.name,
+			message: err.message
+		})
+	} else if (err instanceof Error && err.name == 'NotFoundError') {
+		res.status(404).send({
+			error: getReasonPhrase(404),
 			message: err.message
 		})
 	} else {

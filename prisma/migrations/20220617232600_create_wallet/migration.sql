@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "Wallet" (
+CREATE TABLE "wallets" (
     "id" CHAR(36) NOT NULL PRIMARY KEY,
     "seed" VARCHAR(128) NOT NULL,
     "mnemonic" TEXT NOT NULL,

@@ -8,10 +8,26 @@ datasource db {
 }
 
 model Wallet {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   seed           String
   mnemonic       String
   representative String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  accounts       Account[]
+
+  @@map("wallets")
+}
+
+model Account {
+  id            Int      @id @default(autoincrement())
+  account       String
+  account_index Int
+  wallet_id     String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  wallet        Wallet   @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
+
+  @@unique([wallet_id, account_index])
+  @@map("accounts")
 }
