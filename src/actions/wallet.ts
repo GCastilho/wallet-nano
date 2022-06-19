@@ -2,6 +2,7 @@ import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
 import { walletSchema } from '../models'
+import { wsSend } from '../rpc'
 
 const prisma = new PrismaClient()
 
@@ -25,12 +26,28 @@ export async function walletDestroy(input: Record<string, unknown>) {
 	const { wallet } = walletSchema.validate(input)
 
 	const destroyed = await prisma.wallet.delete({
-		select: null,
+		select: {
+			accounts: {
+				select: {
+					account: true
+				}
+			}
+		},
 		where: {
 			id: wallet,
 		}
-	}).then(() => '1')
-		.catch(() => '0')
+	}).catch(() => null)
 
-	return { destroyed }
+	if (destroyed) {
+		const accounts_del = destroyed.accounts.map(v => v.account)
+		wsSend({
+			action: 'update',
+			topic: 'confirmation',
+			options: { accounts_del },
+		})
+	}
+
+	return {
+		destroyed: destroyed ? '1' : '0'
+	}
 }

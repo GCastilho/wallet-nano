@@ -1,8 +1,9 @@
 import express from 'express'
 import { AssertionError } from 'assert'
-import * as actions from './actions'
-import { HttpError } from './errors'
 import { getReasonPhrase } from 'http-status-codes'
+import { open } from './rpc'
+import { HttpError } from './errors'
+import * as actions from './actions'
 import type { Request, Response, NextFunction } from 'express'
 
 const {
@@ -70,4 +71,5 @@ app.use((
 
 app.listen(PORT, () => {
 	console.log('Server is up on port', +PORT)
+	open()
 })

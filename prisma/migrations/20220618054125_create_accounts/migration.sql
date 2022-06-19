@@ -1,11 +1,12 @@
 -- CreateTable
 CREATE TABLE "accounts" (
-    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-    "account" CHAR(65) NOT NULL,
+    "account" CHAR(65) NOT NULL PRIMARY KEY,
     "account_index" INTEGER NOT NULL,
+    "balance" VARCHAR(39) NOT NULL DEFAULT '0',
+    "private_key" CHAR(64) NOT NULL,
     "wallet_id" CHAR(36) NOT NULL,
-    "created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updated_at" DATETIME NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP NOT NULL,
     CONSTRAINT "accounts_wallet_id_fkey" FOREIGN KEY ("wallet_id") REFERENCES "wallets" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 

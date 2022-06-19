@@ -3,6 +3,8 @@ import axios, { AxiosError } from 'axios'
 import { StatusCodes } from 'http-status-codes'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { HttpError } from './errors'
+import type { WebSocket } from './rpc.d'
+import type { WebSocketEventListenerMap } from 'reconnecting-websocket/dist/events'
 
 const nanoRpcUrl = process.env.NANO_RPC_URL || 'http://127.0.0.1:55000'
 const nanoSocketUrl = process.env.NANO_SOCKET_URL || 'ws://127.0.0.1:57000'
@@ -31,8 +33,14 @@ export function open() {
 /** Close websocket connection */
 export const close = ws.close
 
+type Events = WebSocketEventListenerMap & {
+	message: (listener: WebSocket.MessageEvent) => void
+}
+
 /** Register an event handler of a specific event type */
-export const addEventListener = ws.addEventListener
+export function addEventListener<T extends keyof Events>(event: T, handler: Events[T]) {
+	return ws.addEventListener(event, handler)
+}
 
 /** Send message do webscoekt */
 export function wsSend(data: Record<string, unknown>) {
