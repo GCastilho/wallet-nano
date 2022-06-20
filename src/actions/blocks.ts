@@ -1,6 +1,7 @@
 import { addEventListener, send } from '../rpc'
 import { PrismaClient } from '@prisma/client'
 import * as nano from 'nanocurrency-web'
+import * as nanocurrency from 'nanocurrency'
 import type { WebSocket } from '../rpc.d'
 
 const prisma = new PrismaClient()
@@ -43,21 +44,10 @@ async function handleMessage(data: WebSocket.Message) {
 		const result = await prisma.account.findUnique({
 			select: {
 				private_key: true,
-				balance: true,
 				wallet: {
 					select: {
-						seed: true, // remove
 						representative: true,
 					}
-				},
-				blocks: {
-					select: {
-						hash: true
-					},
-					orderBy: {
-						created_at: 'desc'
-					},
-					take: 1,
 				},
 			},
 			where: { account: link_as_account }
@@ -65,12 +55,22 @@ async function handleMessage(data: WebSocket.Message) {
 		console.log('send', result)
 		if (!result) return
 
+		type Frontiers = {
+			frontier: string
+			balance: string
+		}
+		const { frontier, balance } = await send<Frontiers>({
+			action: 'account_info',
+			account: link_as_account,
+		})
+		console.log('frontier', frontier, balance, '/frontier')
+
 		const block = nano.block.receive({
 			amountRaw: amount,
 			toAddress: link_as_account,
 			transactionHash: hash,
-			walletBalanceRaw: result.balance,
-			frontier: result.blocks[0]?.hash || '0'.repeat(64),
+			walletBalanceRaw: balance,
+			frontier: frontier || '0'.repeat(64),
 			representativeAddress: result.wallet.representative,
 		}, result.private_key)
 
@@ -79,6 +79,10 @@ async function handleMessage(data: WebSocket.Message) {
 		 * against 0...0, but against the account's public key. And, for all
 		 * subsequent blocks, against the previous block hash
 		 */
+		block.work = await nanocurrency.computeWork(
+			frontier || nano.tools.addressToPublicKey(link_as_account)
+		) || ''
+
 		console.log('block', block)
 
 		const res = await send({
@@ -97,6 +101,7 @@ async function handleMessage(data: WebSocket.Message) {
 	 */
 }
 
+/** enfileirar os handlers para prevenir race condition */
 addEventListener('message', ({ data }) => {
 	if ('ack' in data) return console.log('Websocket ack received:', data)
 	if ('error' in data) return console.error('WebSocket error message', data)
