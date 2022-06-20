@@ -4,7 +4,7 @@ import { StatusCodes } from 'http-status-codes'
 import ReconnectingWebSocket from 'reconnecting-websocket'
 import { HttpError } from './errors'
 import type { WebSocket } from './rpc.d'
-import type { WebSocketEventListenerMap } from 'reconnecting-websocket/dist/events'
+import type { WebSocketEventListenerMap, WebSocketEventMap } from 'reconnecting-websocket/dist/events'
 
 const nanoRpcUrl = process.env.NANO_RPC_URL || 'http://127.0.0.1:55000'
 const nanoSocketUrl = process.env.NANO_SOCKET_URL || 'ws://127.0.0.1:57000'
@@ -33,13 +33,39 @@ export function open() {
 /** Close websocket connection */
 export const close = ws.close
 
-type Events = WebSocketEventListenerMap & {
-	message: (listener: WebSocket.MessageEvent) => void
+interface Events extends WebSocketEventListenerMap {
+	message: (event: MessageEvent<WebSocket.MessageEvent>) => void
 }
 
-/** Register an event handler of a specific event type */
+/**
+ * Register an event handler of a specific event type
+ * @returns Function to remove the listeners
+ */
 export function addEventListener<T extends keyof Events>(event: T, handler: Events[T]) {
-	return ws.addEventListener(event, handler)
+	type Msg = WebSocketEventMap[keyof WebSocketEventMap]
+	const eventHandler = (msg: Msg) => {
+		if ('data' in msg) {
+			const data = JSON.parse(msg.data)
+			Object.defineProperty(msg, 'data', {
+				get: () => data
+			})
+		}
+		// @ts-expect-error Probably an error with reconnecting-websocket types :(
+		handler(msg)
+	}
+
+	const onOpen = () => ws.addEventListener(event, eventHandler)
+
+	if (ws.readyState == ws.CLOSED && event == 'message' || event == 'error') {
+		ws.addEventListener('open', onOpen)
+	} else {
+		ws.addEventListener(event, handler)
+	}
+
+	return () => {
+		ws.removeEventListener('open', onOpen)
+		ws.removeEventListener(event, eventHandler)
+	}
 }
 
 /** Send message do webscoekt */

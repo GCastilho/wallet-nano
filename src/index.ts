@@ -37,7 +37,7 @@ app.post('/', async (req, res, next) => {
 	}
 })
 
-type ApiErrors = HttpError|AssertionError|unknown
+type ApiErrors = HttpError|AssertionError|unknown;
 app.use((
 	err: ApiErrors,
 	_req: Request,

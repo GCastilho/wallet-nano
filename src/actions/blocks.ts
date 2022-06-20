@@ -9,7 +9,8 @@ const prisma = new PrismaClient()
 async function handleMessage(data: WebSocket.Message) {
 	const { time } = data
 	const { hash, amount } = data.message
-	const { account, subtype, link } = data.message.block
+	const { account, subtype, link, link_as_account } = data.message.block
+	console.log('handleMessage', data)
 
 	if (subtype == 'receive') {
 		const { balance } = await prisma.account.findUnique({
@@ -18,6 +19,7 @@ async function handleMessage(data: WebSocket.Message) {
 			},
 			where: { account }
 		}) || {}
+		console.log('receive', balance)
 		if (!balance) return // account not ours
 
 		await prisma.account.update({
@@ -28,14 +30,15 @@ async function handleMessage(data: WebSocket.Message) {
 					create: {
 						hash,
 						amount,
-						link,
+						link, // Talvez seja hash
 						subtype,
-						time,
+						time: new Date(+time), // time is a timestamp string => Invalid Date
 					}
 				}
 			},
 			where: { account }
 		})
+		console.log('done')
 	} else if (subtype == 'send') {
 		const result = await prisma.account.findUnique({
 			select: {
@@ -43,6 +46,7 @@ async function handleMessage(data: WebSocket.Message) {
 				balance: true,
 				wallet: {
 					select: {
+						seed: true, // remove
 						representative: true,
 					}
 				},
@@ -56,25 +60,34 @@ async function handleMessage(data: WebSocket.Message) {
 					take: 1,
 				},
 			},
-			where: { account: link }
+			where: { account: link_as_account }
 		})
+		console.log('send', result)
 		if (!result) return
 
 		const block = nano.block.receive({
 			amountRaw: amount,
-			toAddress: link,
-			transactionHash: link,
-			walletBalanceRaw: `${BigInt(amount) + BigInt(result.balance)}`,
+			toAddress: link_as_account,
+			transactionHash: hash,
+			walletBalanceRaw: result.balance,
 			frontier: result.blocks[0]?.hash || '0'.repeat(64),
 			representativeAddress: result.wallet.representative,
 		}, result.private_key)
 
-		await send({
+		/**
+		 * if this is the first block (legacy open block), you don't generate a PoW
+		 * against 0...0, but against the account's public key. And, for all
+		 * subsequent blocks, against the previous block hash
+		 */
+		console.log('block', block)
+
+		const res = await send({
 			action: 'process',
 			json_block: 'true',
-			subtype: 'send',
+			subtype: 'receive',
 			block,
 		})
+		console.log('res', res)
 	}
 
 	/**
@@ -84,10 +97,10 @@ async function handleMessage(data: WebSocket.Message) {
 	 */
 }
 
-addEventListener('message', msg => {
-	if ('ack' in msg) return console.log('Websocket ack received:', msg)
-	if ('error' in msg) return console.error('WebSocket error message', msg)
-	if ('message' in msg) handleMessage(msg).catch(err => {
+addEventListener('message', ({ data }) => {
+	if ('ack' in data) return console.log('Websocket ack received:', data)
+	if ('error' in data) return console.error('WebSocket error message', data)
+	if ('message' in data) handleMessage(data).catch(err => {
 		console.error('Error handling socket message', err)
 	})
 })
