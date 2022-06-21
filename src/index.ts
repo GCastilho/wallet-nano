@@ -22,6 +22,7 @@ app.post('/', async (req, res, next) => {
 
 		switch (action) {
 			case 'account_create': handler = actions.accountCreate; break
+			case 'search_pending': handler = actions.searchPending; break
 			case 'wallet_create': handler = actions.walletCreate; break
 			case 'wallet_destroy': handler = actions.walletDestroy; break
 		}

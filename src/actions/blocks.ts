@@ -2,7 +2,7 @@ import { addEventListener, send } from '../rpc'
 import { PrismaClient } from '@prisma/client'
 import * as nano from 'nanocurrency-web'
 import * as nanocurrency from 'nanocurrency'
-import type { WebSocket } from '../rpc.d'
+import type { WebSocket, RPC } from '../rpc'
 
 const prisma = new PrismaClient()
 
@@ -55,11 +55,7 @@ async function handleMessage(data: WebSocket.Message) {
 		console.log('send', result)
 		if (!result) return
 
-		type Frontiers = {
-			frontier: string
-			balance: string
-		}
-		const { frontier, balance } = await send<Frontiers>({
+		const { frontier, balance } = await send<RPC.AccountInfo>({
 			action: 'account_info',
 			account: link_as_account,
 		})

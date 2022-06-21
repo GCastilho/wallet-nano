@@ -5,6 +5,7 @@ import ReconnectingWebSocket from 'reconnecting-websocket'
 import { HttpError } from './errors'
 import type { WebSocket } from './rpc.d'
 import type { WebSocketEventListenerMap, WebSocketEventMap } from 'reconnecting-websocket/dist/events'
+export type { RPC, WebSocket } from './rpc.d'
 
 const nanoRpcUrl = process.env.NANO_RPC_URL || 'http://127.0.0.1:55000'
 const nanoSocketUrl = process.env.NANO_SOCKET_URL || 'ws://127.0.0.1:57000'
