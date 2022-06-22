@@ -21,16 +21,17 @@ async function processQueue<P extends [...unknown[]]>(
  * @param callback The fn to be executed in queue
  */
 function createQueue<R, P extends [...unknown[]]>(
-	ack: R,
+	ack: R | ((...args: [...P]) => R|Promise<R>),
 	callback: (...args: [...P]) => void,
 ) {
 	const queue = new EventEmitter()
 
 	processQueue(queue, callback)
 
-	return function handler(...args: [...P]): R {
+	return async function handler(...args: [...P]): Promise<R> {
+		const response = ack instanceof Function ? await ack(...args) : ack
 		queue.emit('call', ...args)
-		return ack
+		return response
 	}
 }
 

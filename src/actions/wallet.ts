@@ -58,10 +58,26 @@ export async function walletDestroy(input: Record<string, unknown>) {
 
 const searching = new Set<string>()
 
-export const searchPending = createQueue({ started: '1' }, async (input: Record<string, unknown>) => {
+type Started = {
+	started: '0'|'1'
+}
+export const searchPending = createQueue((input: Record<string, unknown>): Started => {
+	try {
+		const { wallet } = walletSchema.validate(input)
+		if (searching.has(wallet)) return {
+			started: '1'
+		}
+		searching.add(wallet)
+		return {
+			started: '1'
+		}
+	} catch (err) {
+		return {
+			started: '0'
+		}
+	}
+}, async (input: Record<string, unknown>) => {
 	const { wallet } = walletSchema.validate(input)
-	if (searching.has(wallet)) return
-	searching.add(wallet)
 
 	const accounts = await prisma.wallet.findUnique({
 		where: {
@@ -131,7 +147,7 @@ export const searchPending = createQueue({ started: '1' }, async (input: Record<
 				hash,
 			})
 
-			receive({ hash, account, amount })
+			await receive({ hash, account, amount })
 		}
 	}
 

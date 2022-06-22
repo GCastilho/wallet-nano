@@ -40,7 +40,7 @@ async function handleMessage(data: WebSocket.Message) {
 		})
 		console.log('done')
 	} else if (subtype == 'send') {
-		receive({
+		await receive({
 			account: link_as_account,
 			amount,
 			hash,
