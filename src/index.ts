@@ -1,7 +1,7 @@
 import express from 'express'
 import { AssertionError } from 'assert'
 import { getReasonPhrase } from 'http-status-codes'
-import { open } from './rpc'
+import { open, rpcSend } from './rpc'
 import { HttpError } from './errors'
 import * as actions from './actions'
 import type { Request, Response, NextFunction } from 'express'
@@ -21,10 +21,12 @@ app.post('/', async (req, res, next) => {
 		let handler: undefined|((body: JSON) => JSON|Promise<JSON>) = undefined
 
 		switch (action) {
+			case 'send': handler = actions.send; break
 			case 'account_create': handler = actions.accountCreate; break
 			case 'search_pending': handler = actions.searchPending; break
 			case 'wallet_create': handler = actions.walletCreate; break
 			case 'wallet_destroy': handler = actions.walletDestroy; break
+			default: handler = () => rpcSend({ action, ...body }); break
 		}
 
 		if (handler) {
