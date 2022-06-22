@@ -3,6 +3,7 @@ import * as nanocurrency from 'nanocurrency'
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
+import createQueue from '../libs/queue'
 import { walletSchema } from '../models'
 import { send, wsSend } from '../rpc'
 import type { RPC } from '../rpc'
@@ -57,14 +58,9 @@ export async function walletDestroy(input: Record<string, unknown>) {
 
 const searching = new Set<string>()
 
-type Started = {
-	started: '0'|'1'
-}
-export async function searchPending(input: Record<string, unknown>): Promise<Started> {
+export const searchPending = createQueue({ started: '1' }, async (input: Record<string, unknown>) => {
 	const { wallet } = walletSchema.validate(input)
-	if (searching.has(wallet)) return {
-		started: '1'
-	}
+	if (searching.has(wallet)) return
 	searching.add(wallet)
 
 	const accounts = await prisma.wallet.findUnique({
@@ -135,22 +131,19 @@ export async function searchPending(input: Record<string, unknown>): Promise<Sta
 				hash,
 			})
 
-			await receive({ hash, account, amount })
+			receive({ hash, account, amount })
 		}
 	}
 
 	searching.delete(wallet)
-	return {
-		started: '1'
-	}
-}
+})
 
 type Receive = {
 	hash: string
 	amount: string
 	account: string
 }
-async function receive({ hash, account, amount }: Receive) {
+export const receive = createQueue(null, async ({ hash, account, amount }: Receive) => {
 	const result = await prisma.account.findUnique({
 		select: {
 			private_key: true,
@@ -194,4 +187,4 @@ async function receive({ hash, account, amount }: Receive) {
 		block,
 	})
 	console.log('process response', res)
-}
+})

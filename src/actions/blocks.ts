@@ -1,8 +1,7 @@
-import { addEventListener, send } from '../rpc'
 import { PrismaClient } from '@prisma/client'
-import * as nano from 'nanocurrency-web'
-import * as nanocurrency from 'nanocurrency'
-import type { WebSocket, RPC } from '../rpc'
+import { addEventListener } from '../rpc'
+import { receive } from './wallet'
+import type { WebSocket } from '../rpc'
 
 const prisma = new PrismaClient()
 
@@ -41,53 +40,11 @@ async function handleMessage(data: WebSocket.Message) {
 		})
 		console.log('done')
 	} else if (subtype == 'send') {
-		const result = await prisma.account.findUnique({
-			select: {
-				private_key: true,
-				wallet: {
-					select: {
-						representative: true,
-					}
-				},
-			},
-			where: { account: link_as_account }
-		})
-		console.log('send', result)
-		if (!result) return
-
-		const { frontier, balance } = await send<RPC.AccountInfo>({
-			action: 'account_info',
+		receive({
 			account: link_as_account,
+			amount,
+			hash,
 		})
-		console.log('frontier', frontier, balance, '/frontier')
-
-		const block = nano.block.receive({
-			amountRaw: amount,
-			toAddress: link_as_account,
-			transactionHash: hash,
-			walletBalanceRaw: balance,
-			frontier: frontier || '0'.repeat(64),
-			representativeAddress: result.wallet.representative,
-		}, result.private_key)
-
-		/**
-		 * if this is the first block (legacy open block), you don't generate a PoW
-		 * against 0...0, but against the account's public key. And, for all
-		 * subsequent blocks, against the previous block hash
-		 */
-		block.work = await nanocurrency.computeWork(
-			frontier || nano.tools.addressToPublicKey(link_as_account)
-		) || ''
-
-		console.log('block', block)
-
-		const res = await send({
-			action: 'process',
-			json_block: 'true',
-			subtype: 'receive',
-			block,
-		})
-		console.log('res', res)
 	}
 
 	/**

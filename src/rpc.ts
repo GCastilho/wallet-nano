@@ -72,7 +72,7 @@ export function addEventListener<T extends keyof Events>(event: T, handler: Even
 	if (ws.readyState == ws.CLOSED && event == 'message' || event == 'error') {
 		ws.addEventListener('open', onOpen)
 	} else {
-		ws.addEventListener(event, handler)
+		ws.addEventListener(event, eventHandler)
 	}
 
 	return () => {
