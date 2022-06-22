@@ -38,7 +38,7 @@ async function handleMessage(data: WebSocket.Message) {
 			},
 			where: { account }
 		})
-		console.log('done')
+		console.log('received', hash)
 	} else if (subtype == 'send') {
 		await receive({
 			account: link_as_account,

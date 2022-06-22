@@ -92,7 +92,7 @@ type Action = {
 	[key: string]: unknown
 }
 type JSON = Record<string, unknown>
-export async function send<T = JSON, Input extends Action = Action>(data: Input): Promise<T> {
+export async function rpcSend<T = JSON, Input extends Action = Action>(data: Input): Promise<T> {
 	try {
 		const res = await axios.post(nanoRpcUrl, data)
 		if (res.data.error) throw res.data.error

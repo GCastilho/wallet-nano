@@ -4,8 +4,8 @@ import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
 import createQueue from '../libs/queue'
-import { walletSchema } from '../models'
-import { send, wsSend } from '../rpc'
+import { walletSchema, sendSchema } from '../models'
+import { rpcSend, wsSend } from '../rpc'
 import type { RPC } from '../rpc'
 
 const prisma = new PrismaClient()
@@ -91,7 +91,7 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 
 	for (const { account } of accounts) {
 		// Procurar blocos nossos mas não processados (missed)
-		const { frontier } = await send<RPC.AccountInfo>({
+		const { frontier } = await rpcSend<RPC.AccountInfo>({
 			action: 'account_info',
 			account,
 		})
@@ -108,7 +108,7 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 					link,
 					previous,
 				}
-			} = await send<RPC.BlockInfo>({
+			} = await rpcSend<RPC.BlockInfo>({
 				action: 'block_info',
 				json_block: 'true',
 				hash,
@@ -130,7 +130,7 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 		}
 
 		// Procurar pending de send (blocos não processados)
-		const { blocks } = await send<RPC.Pending>({
+		const { blocks } = await rpcSend<RPC.Pending>({
 			action: 'pending',
 			account,
 		})
@@ -141,7 +141,7 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 				contents: {
 					link_as_account: account,
 				}
-			} = await send<RPC.BlockInfo>({
+			} = await rpcSend<RPC.BlockInfo>({
 				action: 'block_info',
 				json_block: 'true',
 				hash,
@@ -174,10 +174,7 @@ export const receive = createQueue(null, async ({ hash, account, amount }: Recei
 	console.log('result', result)
 	if (!result) return // Not ours
 
-	const { frontier, balance } = await send<RPC.AccountInfo>({
-		action: 'account_info',
-		account,
-	})
+	const { frontier, balance } = await accountInfo(account)
 
 	const work = await nanocurrency.computeWork(
 		frontier || nano.tools.addressToPublicKey(account)
@@ -196,11 +193,110 @@ export const receive = createQueue(null, async ({ hash, account, amount }: Recei
 	}, result.private_key)
 	console.log('block', block)
 
-	const res = await send({
+	const res = await rpcSend({
 		action: 'process',
 		json_block: 'true',
 		subtype: 'receive',
 		block,
 	})
-	console.log('process response', res)
+	console.log('receive process response', res)
 })
+
+/**
+ * TODO: Tentar usar o balance da wallet primeiro e se falhar usar o account_info
+ */
+export async function send(input: Record<string, unknown>) {
+	const {
+		amount,
+		destination,
+		source,
+		wallet,
+	} = sendSchema.validate(input)
+
+	const result = await prisma.account.findFirst({
+		select: {
+			balance: true,
+			private_key: true,
+			wallet: {
+				select: {
+					representative: true,
+				}
+			}
+		},
+		where: {
+			wallet_id: wallet,
+			account: source,
+		},
+	})
+	console.log('send result', result)
+	if (!result) return {
+		error: 'Wallet not found'
+	}
+
+	const {
+		frontier,
+		balance,
+	} = await rpcSend<RPC.AccountInfo>({
+		action: 'account_info',
+		account: source,
+	})
+	console.log('frontier', frontier, 'balance', balance)
+	if (BigInt(amount) > BigInt(balance)) return {
+		error: 'Not enough balance'
+	}
+
+	const block = nano.block.send({
+		amountRaw: amount,
+		fromAddress: source,
+		frontier,
+		representativeAddress: result.wallet.representative,
+		toAddress: destination,
+		walletBalanceRaw: balance,
+		work: await nanocurrency.computeWork(frontier) || '',
+	}, result.private_key)
+	console.log('send block', block)
+
+	const res = await rpcSend<{ hash: string }>({
+		action: 'process',
+		json_block: 'true',
+		subtype: 'send',
+		block,
+	})
+	console.log('send process response', res)
+
+	await prisma.account.update({
+		select: null,
+		where: { account: source },
+		data: {
+			balance: block.balance,
+			blocks: {
+				create: {
+					hash: res.hash,
+					amount,
+					link: destination,
+					subtype: 'send',
+					time: new Date(),
+				}
+			}
+		}
+	})
+
+	return {
+		block: res.hash
+	}
+}
+
+async function accountInfo(account: string) {
+	try {
+		return await rpcSend<RPC.AccountInfo>({
+			action: 'account_info',
+			account,
+		})
+	} catch (err) {
+		if (err == 'Account not found') return {
+			frontier: null,
+			balance: '0'
+		}
+		else throw err
+	}
+}

@@ -28,7 +28,7 @@ type InferType<P extends JSONSchema7Definition> =
 	: boolean
 
 class Validator<T extends Schema<any>> {
-	constructor(private schema: T) {}
+	constructor(public schema: T) {}
 
 	validate(data: any): InferType<T> {
 		const { valid, errors } = validate(this.schema, data)
@@ -48,6 +48,24 @@ export const walletSchema = new Validator({
 			type: 'string',
 			minLength: 36,
 			maxLength: 36,
+		},
+	}
+})
+
+const accountSchema = new Validator({
+	type: 'string',
+	minLength: 65,
+	maxLength: 65,
+})
+
+export const sendSchema = new Validator({
+	type: 'object',
+	properties: {
+		wallet: walletSchema.schema.properties.wallet,
+		source: accountSchema.schema,
+		destination: accountSchema.schema,
+		amount: {
+			type: 'string',
 		},
 	}
 })
