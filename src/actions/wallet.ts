@@ -1,11 +1,11 @@
 import * as nano from 'nanocurrency-web'
-import * as nanocurrency from 'nanocurrency'
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
 import createQueue from '../libs/queue'
 import { walletSchema, sendSchema } from '../models'
 import { rpcSend, wsSend } from '../rpc'
+import { getWork } from '../libs/work'
 import type { RPC } from '../rpc'
 
 const prisma = new PrismaClient()
@@ -89,12 +89,41 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 		}
 	})
 
+	console.log('Started search_pending for', wallet, accounts)
 	for (const { account } of accounts) {
-		// Procurar blocos nossos mas não processados (missed)
+		console.log('Searching pending blocks for', account)
+
+		// Procura pending de send (blocos não processados)
+		const { blocks } = await rpcSend<RPC.Pending>({
+			action: 'pending',
+			account,
+		})
+		console.log('Pending blocks for', account, blocks)
+		for (const hash of blocks) {
+			const {
+				amount,
+				contents: {
+					link_as_account: account,
+				}
+			} = await rpcSend<RPC.BlockInfo>({
+				action: 'block_info',
+				json_block: 'true',
+				hash,
+			})
+
+			await receive({ hash, account, amount })
+		}
+
+		console.log('Searching missed receive blocks for', account)
+		// Procura por blocos nossos mas não processados (missed)
 		const { frontier } = await rpcSend<RPC.AccountInfo>({
 			action: 'account_info',
 			account,
+		}).catch(err => {
+			if (err == 'Account not found') return { frontier: null }
+			throw err
 		})
+		if (!frontier) continue
 
 		const zeroBlock = '0'.repeat(64)
 		let hash = frontier
@@ -129,28 +158,16 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 			hash = previous
 		}
 
-		// Procurar pending de send (blocos não processados)
-		const { blocks } = await rpcSend<RPC.Pending>({
-			action: 'pending',
-			account,
+		// Atualiza o saldo
+		const { balance } = await accountInfo(account)
+		await prisma.account.update({
+			select: null,
+			where: { account },
+			data: { balance },
 		})
-		console.log('blocks', blocks)
-		for (const hash of blocks) {
-			const {
-				amount,
-				contents: {
-					link_as_account: account,
-				}
-			} = await rpcSend<RPC.BlockInfo>({
-				action: 'block_info',
-				json_block: 'true',
-				hash,
-			})
-
-			await receive({ hash, account, amount })
-		}
 	}
 
+	console.log('search_pending done for', wallet)
 	searching.delete(wallet)
 })
 
@@ -176,9 +193,7 @@ export const receive = createQueue(null, async ({ hash, account, amount }: Recei
 
 	const { frontier, balance } = await accountInfo(account)
 
-	const work = await nanocurrency.computeWork(
-		frontier || nano.tools.addressToPublicKey(account)
-	) || ''
+	const work = await getWork(account, frontier)
 
 	console.log({ frontier, balance, work })
 
@@ -252,7 +267,7 @@ export async function send(input: Record<string, unknown>) {
 		representativeAddress: result.wallet.representative,
 		toAddress: destination,
 		walletBalanceRaw: balance,
-		work: await nanocurrency.computeWork(frontier) || '',
+		work: await getWork(source, frontier),
 	}, result.private_key)
 	console.log('send block', block)
 
