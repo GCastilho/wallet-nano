@@ -29,6 +29,7 @@ model Account {
   updated_at    DateTime @updatedAt
   wallet        Wallet   @relation(fields: [wallet_id], references: [id], onDelete: Cascade)
   blocks        Block[]
+  work          Work?
 
   @@unique([wallet_id, account_index])
   @@map("accounts")
@@ -46,4 +47,15 @@ model Block {
   account    Account  @relation(fields: [account_id], references: [account], onDelete: Cascade)
 
   @@map("blocks")
+}
+
+model Work {
+  address    String   @id
+  hash       String   @unique
+  work       String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  account    Account  @relation(fields: [address], references: [account], onDelete: Cascade)
+
+  @@map("works")
 }
