@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client'
 import createQueue from '../libs/queue'
 import { walletSchema, sendSchema } from '../models'
 import { rpcSend, wsSend } from '../rpc'
-import { getWork } from '../libs/work'
+import { getWork, precomputeWork } from '../libs/work'
 import type { RPC } from '../rpc'
 
 const prisma = new PrismaClient()
@@ -230,7 +230,6 @@ export async function send(input: Record<string, unknown>) {
 
 	const result = await prisma.account.findFirst({
 		select: {
-			balance: true,
 			private_key: true,
 			wallet: {
 				select: {
@@ -278,6 +277,9 @@ export async function send(input: Record<string, unknown>) {
 		block,
 	})
 	console.log('send process response', res)
+
+	// source é a nossa account
+	precomputeWork(source, res.hash)
 
 	await prisma.account.update({
 		select: null,
