@@ -69,3 +69,15 @@ export const sendSchema = new Validator({
 		},
 	}
 })
+
+export const workerWorkSchema = new Validator({
+	type: 'object',
+	properties: {
+		blockHash: {
+			type: 'string',
+		},
+		work: {
+			type: 'string'
+		}
+	}
+})

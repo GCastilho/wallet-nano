@@ -1,15 +1,34 @@
+import { join } from 'path'
+import { Worker } from 'worker_threads'
 import { prisma } from '../../prisma/client'
 import * as nanocurrency from 'nanocurrency'
 import { addEventListener } from '../rpc'
+import { workerWorkSchema } from '../models'
+
+const worker = new Worker(join(__dirname, './worker.js'))
 
 const works = new Map<string, Promise<string>>()
 
-async function generateWork(account: string, hash: string|null) {
-	const work = await nanocurrency.computeWork(
-		hash || nanocurrency.derivePublicKey(account)
-	)
-	if (!work) throw new Error('Generated work is null')
-	return work
+function generateWork(account: string, hash: string|null) {
+	return new Promise<string>((resolve, reject) => {
+		worker.postMessage(hash || nanocurrency.derivePublicKey(account))
+		const handler = (message: unknown) => {
+			// @ts-expect-error A classe é definida no .js do worker
+			if (message instanceof Error && message['blockHash'] == hash) {
+				worker.off('message', handler)
+				return reject(message)
+			}
+			try {
+				const { blockHash, work } = workerWorkSchema.validate(message)
+				if (blockHash != hash) return // Not the message we sent
+				resolve(work)
+			} catch (err) {
+				reject(err)
+			}
+			worker.off('message', handler)
+		}
+		worker.on('message', handler)
+	})
 }
 
 async function computeWork(account: string, hash: string|null) {
