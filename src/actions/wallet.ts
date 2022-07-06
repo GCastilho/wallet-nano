@@ -3,8 +3,9 @@ import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
 import createQueue from '../libs/queue'
-import { walletSchema, sendSchema } from '../models'
 import { rpcSend, wsSend } from '../rpc'
+import { accountInfo } from '../libs/accounts'
+import { walletSchema, sendSchema } from '../models'
 import { getWork, precomputeWork } from '../libs/work'
 import type { RPC } from '../rpc'
 
@@ -56,12 +57,10 @@ export async function walletDestroy(input: Record<string, unknown>) {
 	}
 }
 
-const searching = new Set<string>()
-
 type Started = {
 	started: '0'|'1'
 }
-export const searchPending = createQueue((input: Record<string, unknown>): Started => {
+function searchAck(input: Record<string, unknown>): Started {
 	try {
 		const { wallet } = walletSchema.validate(input)
 		if (searching.has(wallet)) return {
@@ -76,16 +75,18 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 			started: '0'
 		}
 	}
-}, async (input: Record<string, unknown>) => {
-	const { wallet } = walletSchema.validate(input)
+}
 
-	const accounts = await prisma.wallet.findUnique({
-		where: {
-			id: wallet
-		}
-	}).accounts({
+const searching = new Set<string>()
+
+export const searchPending = createQueue(searchAck, async (input: Record<string, unknown>) => {
+	const { wallet } = walletSchema.validate(input)
+	const accounts = await prisma.account.findMany({
 		select: {
-			account: true
+			account: true,
+		},
+		where: {
+			wallet_id: wallet
 		}
 	})
 
@@ -93,7 +94,6 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 	for (const { account } of accounts) {
 		console.log('Searching pending blocks for', account)
 
-		// Procura pending de send (blocos não processados)
 		const { blocks } = await rpcSend<RPC.Pending>({
 			action: 'pending',
 			account,
@@ -114,8 +114,34 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 			await receive({ hash, account, amount })
 		}
 
+		// Atualiza o saldo
+		const { balance } = await accountInfo(account)
+		await prisma.account.update({
+			select: null,
+			where: { account },
+			data: { balance },
+		})
+	}
+
+	console.log('search_pending done for', wallet)
+	searching.delete(wallet)
+})
+
+/** Procura por blocos nossos não processados */
+export const searchMissing = createQueue(searchAck, async (input: Record<string, unknown>) => {
+	const { wallet } = walletSchema.validate(input)
+	const accounts = await prisma.account.findMany({
+		select: {
+			account: true,
+		},
+		where: {
+			wallet_id: wallet,
+		}
+	})
+
+	for (const { account } of accounts) {
 		console.log('Searching missed receive blocks for', account)
-		// Procura por blocos nossos mas não processados (missed)
+
 		const { frontier } = await rpcSend<RPC.AccountInfo>({
 			action: 'account_info',
 			account,
@@ -157,18 +183,7 @@ export const searchPending = createQueue((input: Record<string, unknown>): Start
 			})
 			hash = previous
 		}
-
-		// Atualiza o saldo
-		const { balance } = await accountInfo(account)
-		await prisma.account.update({
-			select: null,
-			where: { account },
-			data: { balance },
-		})
 	}
-
-	console.log('search_pending done for', wallet)
-	searching.delete(wallet)
 })
 
 type Receive = {
@@ -300,20 +315,5 @@ export async function send(input: Record<string, unknown>) {
 
 	return {
 		block: res.hash
-	}
-}
-
-async function accountInfo(account: string) {
-	try {
-		return await rpcSend<RPC.AccountInfo>({
-			action: 'account_info',
-			account,
-		})
-	} catch (err) {
-		if (err == 'Account not found') return {
-			frontier: null,
-			balance: '0'
-		}
-		else throw err
 	}
 }
