@@ -232,9 +232,6 @@ export const receive = createQueue(null, async ({ hash, account, amount }: Recei
 	console.log('receive process response', res)
 })
 
-/**
- * TODO: Tentar usar o balance da wallet primeiro e se falhar usar o account_info
- */
 export async function send(input: Record<string, unknown>) {
 	const {
 		amount,
@@ -242,10 +239,21 @@ export async function send(input: Record<string, unknown>) {
 		source,
 		wallet,
 	} = sendSchema.validate(input)
+	console.log('send request received', input)
 
 	const result = await prisma.account.findFirst({
 		select: {
+			balance: true,
 			private_key: true,
+			blocks: {
+				select: {
+					hash: true,
+				},
+				take: 1,
+				orderBy: {
+					time: 'desc'
+				},
+			},
 			wallet: {
 				select: {
 					representative: true,
@@ -257,20 +265,15 @@ export async function send(input: Record<string, unknown>) {
 			account: source,
 		},
 	})
-	console.log('send result', result)
 	if (!result) return {
 		error: 'Wallet not found'
 	}
 
-	const {
-		frontier,
-		balance,
-	} = await rpcSend<RPC.AccountInfo>({
-		action: 'account_info',
-		account: source,
-	})
-	console.log('frontier', frontier, 'balance', balance)
-	if (BigInt(amount) > BigInt(balance)) return {
+	const frontier = result.blocks[0]?.hash
+	if (!frontier) return {
+		error: `Frontier not found for '${source}'`
+	}
+	if (BigInt(amount) > BigInt(result.balance)) return {
 		error: 'Not enough balance'
 	}
 
@@ -280,7 +283,7 @@ export async function send(input: Record<string, unknown>) {
 		frontier,
 		representativeAddress: result.wallet.representative,
 		toAddress: destination,
-		walletBalanceRaw: balance,
+		walletBalanceRaw: result.balance,
 		work: await getWork(source, frontier),
 	}, result.private_key)
 	console.log('send block', block)
