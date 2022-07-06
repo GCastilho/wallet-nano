@@ -1,13 +1,13 @@
 import { join } from 'path'
 import { Worker } from 'worker_threads'
-import { prisma } from '../../prisma/client'
+import { prisma } from '../../../prisma/client'
 import * as nanocurrency from 'nanocurrency'
-import { addEventListener } from '../rpc'
-import { workerWorkSchema } from '../models'
+import { addEventListener } from '../../rpc'
+import { workerWorkSchema } from '../../models'
 
 const worker = new Worker(join(__dirname, './worker.js'))
 
-const works = new Map<string, Promise<string>>()
+const workPromises = new Map<string, Promise<string>>()
 
 function generateWork(account: string, hash: string|null) {
 	return new Promise<string>((resolve, reject) => {
@@ -33,11 +33,11 @@ function generateWork(account: string, hash: string|null) {
 
 async function computeWork(account: string, hash: string|null) {
 	const workPromise = generateWork(account, hash)
-	works.set(account, workPromise)
+	workPromises.set(account, workPromise)
 	try {
 		return await workPromise
 	} finally {
-		works.delete(account)
+		workPromises.delete(account)
 	}
 }
 
@@ -53,7 +53,7 @@ export async function getWork(account: string, frontier: string|null) {
 	}) || {}
 	if (work) return work
 
-	const computingWork = works.get(account)
+	const computingWork = workPromises.get(account)
 	if (computingWork) return computingWork
 
 	return computeWork(account, frontier)
