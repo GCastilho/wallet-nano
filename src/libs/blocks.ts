@@ -19,7 +19,6 @@ async function handleMessage(data: WebSocket.Message) {
 			},
 			where: { account }
 		}) || {}
-		console.log('receive', balance)
 		if (!balance) return // account not ours
 
 		await prisma.account.update({
@@ -38,7 +37,6 @@ async function handleMessage(data: WebSocket.Message) {
 			},
 			where: { account }
 		})
-		console.log('received', hash)
 	} else if (subtype == 'send') {
 		await receive({
 			account: link_as_account,
@@ -46,12 +44,6 @@ async function handleMessage(data: WebSocket.Message) {
 			hash,
 		})
 	}
-
-	/**
-	 * Se for receive, tem q salvar e atualizar o nosso websocket q ainda n existe
-	 * Se for send, tem q criar um bloco de receive, SALVAR ELE, daí publicar
-	 * Blocos poderiam ter um status 'não publicado' para poder lidar com isso
-	 */
 }
 
 /** enfileirar os handlers para prevenir race condition */

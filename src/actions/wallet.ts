@@ -192,6 +192,8 @@ type Receive = {
 	account: string
 }
 export const receive = createQueue(null, async ({ hash, account, amount }: Receive) => {
+	console.log('received block', { hash, account, amount })
+
 	const result = await prisma.account.findUnique({
 		select: {
 			private_key: true,
@@ -203,14 +205,10 @@ export const receive = createQueue(null, async ({ hash, account, amount }: Recei
 		},
 		where: { account }
 	})
-	console.log('result', result)
 	if (!result) return // Not ours
 
 	const { frontier, balance } = await accountInfo(account)
-
 	const work = await getWork(account, frontier)
-
-	console.log({ frontier, balance, work })
 
 	const block = nano.block.receive({
 		amountRaw: amount,
@@ -221,7 +219,7 @@ export const receive = createQueue(null, async ({ hash, account, amount }: Recei
 		representativeAddress: result.wallet.representative,
 		work,
 	}, result.private_key)
-	console.log('block', block)
+	console.log('receive block created', block)
 
 	const res = await rpcSend({
 		action: 'process',
