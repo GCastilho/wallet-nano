@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { addEventListener } from '../rpc'
-import { receive } from './wallet'
+import { receive } from '../actions/wallet'
 import type { WebSocket } from '../rpc'
 
 const prisma = new PrismaClient()
