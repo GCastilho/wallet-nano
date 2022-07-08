@@ -28,6 +28,7 @@ app.post('/', async (req, res, next) => {
 			case 'wallet_destroy': handler = actions.walletDestroy; break
 			case 'search_missing': handler = actions.searchMissing; break
 			case 'receive': handler = actions.receive; break
+			case 'receive_all': handler = actions.searchPending; break
 			default: handler = () => rpcSend({ action, ...body }); break
 		}
 

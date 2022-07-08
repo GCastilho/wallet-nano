@@ -1,5 +1,6 @@
 import * as nano from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
+import config from '../config'
 import { rpcSend } from '../rpc'
 import { HttpError } from '../errors'
 import { getWork } from '../libs/work'
@@ -16,6 +17,10 @@ type Receive = (params: {
 
 export const receiveBlock: Receive = createQueue(async ({ hash, account, amount }) => {
 	console.log('received block', { hash, account, amount })
+
+	if (BigInt(amount) < BigInt(config.receiveMinimum)) return {
+		hash: ''
+	}
 
 	const result = await prisma.account.findUnique({
 		select: {
