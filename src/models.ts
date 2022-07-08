@@ -96,3 +96,12 @@ export const workerWorkSchema = new Validator({
 		}
 	}
 })
+
+export const receiveMinimumSchema = new Validator({
+	type: 'object',
+	properties: {
+		amount: {
+			type: 'string',
+		},
+	}
+})

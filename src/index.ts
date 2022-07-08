@@ -29,6 +29,8 @@ app.post('/', async (req, res, next) => {
 			case 'search_missing': handler = actions.searchMissing; break
 			case 'receive': handler = actions.receive; break
 			case 'receive_all': handler = actions.searchPending; break
+			case 'receive_minimum': handler = actions.receiveMinimum; break
+			case 'receive_minimum_set': handler = actions.receiveMinimumSet; break
 			default: handler = () => rpcSend({ action, ...body }); break
 		}
 
