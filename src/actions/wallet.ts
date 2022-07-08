@@ -2,11 +2,13 @@ import * as nano from 'nanocurrency-web'
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
-import { createAckQueue } from '../libs/queue'
+import { HttpError } from '../errors'
 import { rpcSend, wsSend } from '../rpc'
+import { receiveBlock } from '../libs/wallet'
 import { accountInfo } from '../libs/accounts'
-import { walletSchema, sendSchema } from '../models'
+import { walletSchema, sendSchema, receiveSchema } from '../models'
 import { getWork, precomputeWork } from '../libs/work'
+import { createQueue, createAckQueue } from '../libs/queue'
 import type { RPC } from '../rpc'
 
 const prisma = new PrismaClient()
@@ -111,7 +113,7 @@ export const searchPending = createAckQueue(searchAck, async (input: Record<stri
 				hash,
 			})
 
-			await receive({ hash, account, amount })
+			await receiveBlock({ hash, account, amount })
 		}
 
 		// Atualiza o saldo
@@ -186,48 +188,33 @@ export const searchMissing = createAckQueue(searchAck, async (input: Record<stri
 	}
 })
 
-type Receive = {
-	hash: string
-	amount: string
-	account: string
-}
-export const receive = createAckQueue(null, async ({ hash, account, amount }: Receive) => {
-	console.log('received block', { hash, account, amount })
+export const receive = createQueue(async (input: Record<string, unknown>) => {
+	const {
+		block,
+		account,
+		wallet,
+	} = receiveSchema.validate(input)
 
-	const result = await prisma.account.findUnique({
-		select: {
-			private_key: true,
-			wallet: {
-				select: {
-					representative: true,
-				}
-			},
+	const result = await prisma.account.findFirst({
+		select: null,
+		where: {
+			account,
+			wallet_id: wallet,
 		},
-		where: { account }
 	})
-	if (!result) return // Not ours
+	if (!result) throw new HttpError('NOT_FOUND', 'Wallet or account not found')
 
-	const { frontier, balance } = await accountInfo(account)
-	const work = await getWork(account, frontier)
-
-	const block = nano.block.receive({
-		amountRaw: amount,
-		toAddress: account,
-		transactionHash: hash,
-		walletBalanceRaw: balance,
-		frontier: frontier || '0'.repeat(64),
-		representativeAddress: result.wallet.representative,
-		work,
-	}, result.private_key)
-	console.log('receive block created', block)
-
-	const res = await rpcSend({
-		action: 'process',
+	const { amount } = await rpcSend<RPC.BlockInfo>({
+		action: 'block_info',
 		json_block: 'true',
-		subtype: 'receive',
 		block,
 	})
-	console.log('receive process response', res)
+
+	return receiveBlock({
+		hash: block,
+		account,
+		amount,
+	})
 })
 
 export async function send(input: Record<string, unknown>) {
@@ -263,16 +250,14 @@ export async function send(input: Record<string, unknown>) {
 			account: source,
 		},
 	})
-	if (!result) return {
-		error: 'Wallet not found'
-	}
+	if (!result) throw new HttpError('NOT_FOUND', 'Wallet not found')
 
 	const frontier = result.blocks[0]?.hash
-	if (!frontier) return {
-		error: `Frontier not found for '${source}'`
+	if (!frontier) {
+		throw new HttpError('NOT_FOUND', `Frontier not found for '${source}'`)
 	}
-	if (BigInt(amount) > BigInt(result.balance)) return {
-		error: 'Not enough balance'
+	if (BigInt(amount) > BigInt(result.balance)) {
+		throw new HttpError('PRECONDITION_FAILED', 'Not enough balance')
 	}
 
 	const block = nano.block.send({

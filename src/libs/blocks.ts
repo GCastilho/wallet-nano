@@ -1,16 +1,16 @@
 import { PrismaClient } from '@prisma/client'
+import { receiveBlock } from './wallet'
 import { addEventListener } from '../rpc'
-import { receive } from '../actions/wallet'
 import type { WebSocket } from '../rpc'
 
 const prisma = new PrismaClient()
 
 // Atualizar rep da wallet a cada bloco?
 async function handleMessage(data: WebSocket.Message) {
+	console.log('handleMessage', data)
 	const { time } = data
 	const { hash, amount } = data.message
 	const { account, subtype, link, link_as_account } = data.message.block
-	console.log('handleMessage', data)
 
 	if (subtype == 'receive') {
 		const { balance } = await prisma.account.findUnique({
@@ -38,7 +38,7 @@ async function handleMessage(data: WebSocket.Message) {
 			where: { account }
 		})
 	} else if (subtype == 'send') {
-		await receive({
+		await receiveBlock({
 			account: link_as_account,
 			amount,
 			hash,

@@ -70,11 +70,26 @@ export const sendSchema = new Validator({
 	}
 })
 
+export const receiveSchema = new Validator({
+	type: 'object',
+	properties: {
+		wallet: walletSchema.schema.properties.wallet,
+		account: accountSchema.schema,
+		block: {
+			type: 'string',
+			maxLength: 64,
+			minLength: 64,
+		}
+	}
+})
+
 export const workerWorkSchema = new Validator({
 	type: 'object',
 	properties: {
 		blockHash: {
 			type: 'string',
+			maxLength: 64,
+			minLength: 64,
 		},
 		work: {
 			type: 'string'

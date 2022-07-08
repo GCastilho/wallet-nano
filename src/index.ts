@@ -27,6 +27,7 @@ app.post('/', async (req, res, next) => {
 			case 'wallet_create': handler = actions.walletCreate; break
 			case 'wallet_destroy': handler = actions.walletDestroy; break
 			case 'search_missing': handler = actions.searchMissing; break
+			case 'receive': handler = actions.receive; break
 			default: handler = () => rpcSend({ action, ...body }); break
 		}
 
@@ -34,7 +35,7 @@ app.post('/', async (req, res, next) => {
 			const data = await handler(body)
 			res.status(200).send(data)
 		} else {
-			res.status(404).send({ error: 'Method not found' })
+			throw new HttpError('NOT_FOUND', 'Method not found')
 		}
 	} catch (err) {
 		next(err)
