@@ -2,7 +2,7 @@ import * as nano from 'nanocurrency-web'
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
-import createQueue from '../libs/queue'
+import { createAckQueue } from '../libs/queue'
 import { rpcSend, wsSend } from '../rpc'
 import { accountInfo } from '../libs/accounts'
 import { walletSchema, sendSchema } from '../models'
@@ -79,7 +79,7 @@ function searchAck(input: Record<string, unknown>): Started {
 
 const searching = new Set<string>()
 
-export const searchPending = createQueue(searchAck, async (input: Record<string, unknown>) => {
+export const searchPending = createAckQueue(searchAck, async (input: Record<string, unknown>) => {
 	const { wallet } = walletSchema.validate(input)
 	const accounts = await prisma.account.findMany({
 		select: {
@@ -128,7 +128,7 @@ export const searchPending = createQueue(searchAck, async (input: Record<string,
 })
 
 /** Procura por blocos nossos não processados */
-export const searchMissing = createQueue(searchAck, async (input: Record<string, unknown>) => {
+export const searchMissing = createAckQueue(searchAck, async (input: Record<string, unknown>) => {
 	const { wallet } = walletSchema.validate(input)
 	const accounts = await prisma.account.findMany({
 		select: {
@@ -191,7 +191,7 @@ type Receive = {
 	amount: string
 	account: string
 }
-export const receive = createQueue(null, async ({ hash, account, amount }: Receive) => {
+export const receive = createAckQueue(null, async ({ hash, account, amount }: Receive) => {
 	console.log('received block', { hash, account, amount })
 
 	const result = await prisma.account.findUnique({

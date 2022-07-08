@@ -1,38 +1,51 @@
 import EventEmitter from 'events'
 
-async function processQueue<P extends [...unknown[]]>(
-	queue: EventEmitter,
-	callback: (...args: [...P]) => void,
-) {
-	try {
-		for await (const item of EventEmitter.on(queue, 'call')) {
-			callback(...item)
-		}
-	} catch (err) {
-		console.error('Error observed while processing queue:', err)
+async function processQueue(queue: EventEmitter) {
+	for await (const [callback] of EventEmitter.on(queue, 'call')) {
+		callback()
 	}
 }
 
 /**
- * Create a queue, where the calls to the callback are queued and executed in
+ * Creates a queue, where the calls to the handler are queued and executed in
  * order, preventing it from being called while the previous call is still
  * executing
- * @param ack The value to return from the invocation to signal acknowledgement
- * @param callback The fn to be executed in queue
+ * @param handler The fn to be executed in queue
+ * @returns A function that will call 'handler' in a queue
  */
-function createQueue<R, P extends [...unknown[]]>(
-	ack: R | ((...args: [...P]) => R|Promise<R>),
-	callback: (...args: [...P]) => void,
-) {
+export function createQueue<T, R>(
+	handler: (value: T) => Promise<R>
+): (value: T) => Promise<R> {
 	const queue = new EventEmitter()
 
-	processQueue(queue, callback)
+	processQueue(queue)
 
-	return async function handler(...args: [...P]): Promise<R> {
-		const response = ack instanceof Function ? await ack(...args) : ack
-		queue.emit('call', ...args)
+	return function(value) {
+		return new Promise<R>((resolve, reject) => {
+			queue.emit('call', () => {
+				handler(value).then(resolve).catch(reject)
+			})
+		})
+	}
+}
+
+/**
+ * Creates an 'ack' queue, that differs from a normal queue by resolving
+ * immediately with the 'ack' value (or it's return) instead of awaiting for the
+ * handler's return
+ * @param ack The value to return from the invocation to signal acknowledgement
+ * @param handler The fn to be executed in queue
+ */
+export function createAckQueue<R, P>(
+	ack: R | ((value: P) => R|Promise<R>),
+	handler: (value: P) => Promise<void>
+) {
+	const queue = createQueue(handler)
+
+	return async function(value: P) {
+		const response = ack instanceof Function ? await ack(value) : ack
+		queue(value).catch(err => console.error('Error on createAckQueue', err))
 		return response
 	}
 }
 
-export default createQueue
