@@ -95,7 +95,11 @@ type JSON = Record<string, unknown>
 export async function rpcSend<T = JSON, Input extends Action = Action>(data: Input): Promise<T> {
 	try {
 		const res = await axios.post(nanoRpcUrl, data)
-		if (res.data.error) throw res.data.error
+		if (res.data.error) {
+			const error = new Error(res.data.error)
+			error.name = 'RpcError'
+			throw error
+		}
 		return res.data
 	} catch (err) {
 		if (err instanceof AxiosError) {

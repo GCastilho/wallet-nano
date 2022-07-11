@@ -13,18 +13,32 @@ type Receive = (params: {
 	hash: string
 	amount: string
 	account: string
+}, options?: {
+	frontier?: string|null
+	balance?: string
 }) => Promise<{ hash: string }>
 
-export const receiveBlock: Receive = createQueue(async ({ hash, account, amount }) => {
+// TODO: Aceitar ID no receive e usar isso para idempotencia (no send tbm)
+export const receiveBlock: Receive = createQueue(async ({ hash, account, amount }, options) => {
 	console.log('received block', { hash, account, amount })
 
-	if (BigInt(amount) < BigInt(config.receiveMinimum)) return {
+	if (BigInt(amount || 0) < BigInt(config.receiveMinimum)) return {
 		hash: ''
 	}
 
 	const result = await prisma.account.findUnique({
 		select: {
+			balance: true,
 			private_key: true,
+			blocks: {
+				select: {
+					hash: true,
+				},
+				take: 1,
+				orderBy: {
+					time: 'desc'
+				},
+			},
 			wallet: {
 				select: {
 					representative: true,
@@ -33,9 +47,10 @@ export const receiveBlock: Receive = createQueue(async ({ hash, account, amount 
 		},
 		where: { account }
 	})
-	if (!result) throw new HttpError('UNPROCESSABLE_ENTITY', 'Account not found')
+	if (!result) throw new HttpError('NOT_FOUND', 'Account not found')
 
-	const { frontier, balance } = await accountInfo(account)
+	const frontier = options?.frontier || result.blocks[0]?.hash
+	const balance = options?.balance || result.balance
 	const work = await getWork(account, frontier)
 
 	const block = nano.block.receive({
@@ -49,16 +64,23 @@ export const receiveBlock: Receive = createQueue(async ({ hash, account, amount 
 	}, result.private_key)
 	console.log('receive block created', block)
 
-	// TODO: Se falhar com o code certo, usar o account_info p/ pegar balance e frontier e tentar de novo
-	const res = await rpcSend<{ hash: string }>({
-		action: 'process',
-		json_block: 'true',
-		subtype: 'receive',
-		block,
-	})
-	console.log('receive process response', res)
+	try {
+		const res = await rpcSend<{ hash: string }>({
+			action: 'process',
+			json_block: 'true',
+			subtype: 'receive',
+			block,
+		})
+		console.log('receive process response', res)
 
-	return {
-		hash: res.hash
+		return {
+			hash: res.hash
+		}
+	} catch (err) {
+		if (err instanceof Error && err.message == 'Fork') {
+			console.log(`RPC returned 'Fork' for ${hash}, this usually means the wallet is not synchronized with the network. Trying again using account_info to fetch the frontier...`)
+			const { frontier, balance } = await accountInfo(account)
+			return receiveBlock({ hash, account, amount }, { frontier, balance })
+		} else throw err
 	}
 })

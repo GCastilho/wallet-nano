@@ -1,11 +1,12 @@
 import { PrismaClient } from '@prisma/client'
+import { HttpError } from '../errors'
 import { receiveBlock } from './wallet'
 import { addEventListener } from '../rpc'
 import type { WebSocket } from '../rpc'
 
 const prisma = new PrismaClient()
 
-// Atualizar rep da wallet a cada bloco?
+// TODO: Atualizar rep da wallet a cada bloco?
 async function handleMessage(data: WebSocket.Message) {
 	console.log('handleMessage', data)
 	const { time } = data
@@ -29,7 +30,7 @@ async function handleMessage(data: WebSocket.Message) {
 					create: {
 						hash,
 						amount,
-						link, // Talvez seja hash
+						link,
 						subtype,
 						time: new Date(+time), // time is a timestamp string => Invalid Date
 					}
@@ -42,6 +43,8 @@ async function handleMessage(data: WebSocket.Message) {
 			account: link_as_account,
 			amount,
 			hash,
+		}).catch(err => {
+			if (!(err instanceof HttpError && err.code == 404)) throw err
 		})
 	}
 }

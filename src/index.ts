@@ -68,6 +68,11 @@ app.use((
 			error: getReasonPhrase(404),
 			message: err.message
 		})
+	} else if (err instanceof Error && err.name == 'RpcError') {
+		res.status(400).send({
+			error: 'RpcError',
+			message: err.message
+		})
 	} else {
 		res.status(500).send({
 			error: getReasonPhrase(500),

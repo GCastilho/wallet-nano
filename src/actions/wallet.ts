@@ -178,7 +178,7 @@ export const searchMissing = createAckQueue(searchAck, async (input: Record<stri
 					amount,
 					link,
 					subtype,
-					time: new Date(+local_timestamp),
+					time: new Date(+(local_timestamp + '000')),
 					account_id: block_account,
 				},
 				update: {},
@@ -207,7 +207,7 @@ export const receive = createQueue(async (input: Record<string, unknown>) => {
 	const { amount } = await rpcSend<RPC.BlockInfo>({
 		action: 'block_info',
 		json_block: 'true',
-		block,
+		hash: block,
 	})
 
 	return receiveBlock({

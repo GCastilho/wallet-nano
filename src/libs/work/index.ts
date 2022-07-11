@@ -9,9 +9,10 @@ const worker = new Worker(join(__dirname, './worker.js'))
 
 const workPromises = new Map<string, Promise<string>>()
 
-function generateWork(account: string, hash: string|null) {
+function generateWork(account: string, hash: string|null|undefined) {
 	return new Promise<string>((resolve, reject) => {
-		worker.postMessage(hash || nanocurrency.derivePublicKey(account))
+		const hashMessage = hash || nanocurrency.derivePublicKey(account)
+		worker.postMessage(hashMessage)
 		const handler = (message: unknown) => {
 			// @ts-expect-error A classe é definida no .js do worker
 			if (message instanceof Error && message['blockHash'] == hash) {
@@ -20,7 +21,7 @@ function generateWork(account: string, hash: string|null) {
 			}
 			try {
 				const { blockHash, work } = workerWorkSchema.validate(message)
-				if (blockHash != hash) return // Not the message we sent
+				if (blockHash != hashMessage) return // Not the message we sent
 				resolve(work)
 			} catch (err) {
 				reject(err)
@@ -31,7 +32,7 @@ function generateWork(account: string, hash: string|null) {
 	})
 }
 
-async function computeWork(account: string, hash: string|null) {
+async function computeWork(account: string, hash: string|null|undefined) {
 	const workPromise = generateWork(account, hash)
 	workPromises.set(account, workPromise)
 	try {
@@ -41,7 +42,7 @@ async function computeWork(account: string, hash: string|null) {
 	}
 }
 
-export async function getWork(account: string, frontier: string|null) {
+export async function getWork(account: string, frontier: string|null|undefined) {
 	const { work } = await prisma.work.findFirst({
 		select: {
 			work: true
