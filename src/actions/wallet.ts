@@ -46,11 +46,11 @@ export async function walletDestroy(input: Record<string, unknown>) {
 	}).catch(() => null)
 
 	if (destroyed) {
-		const accounts_del = destroyed.accounts.map(v => v.account)
+		const accounts = destroyed.accounts.map(v => v.account)
 		wsSend({
 			action: 'update',
 			topic: 'confirmation',
-			options: { accounts_del },
+			options: { accounts },
 		})
 	}
 

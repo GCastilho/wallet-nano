@@ -50,7 +50,9 @@ export async function accountCreate(input: Record<string, unknown>) {
 	wsSend({
 		action: 'update',
 		topic: 'confirmation',
-		options: { accounts_add: [address]},
+		options: {
+			accounts: [address]
+		},
 	})
 
 	return {
