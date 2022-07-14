@@ -27,12 +27,17 @@ async function handleMessage(data: WebSocket.Message) {
 			data: {
 				balance: `${BigInt(balance) + BigInt(amount)}`,
 				blocks: {
-					create: {
-						hash,
-						amount,
-						link,
-						subtype,
-						time: new Date(+time), // time is a timestamp string => Invalid Date
+					connectOrCreate: {
+						create: {
+							hash,
+							amount,
+							link,
+							subtype,
+							time: new Date(+time), // time is a timestamp string => Invalid Date
+						},
+						where: {
+							hash,
+						}
 					}
 				}
 			},

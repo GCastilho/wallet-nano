@@ -8,7 +8,7 @@ export async function accountInfo(account: string) {
 			account,
 		})
 	} catch (err) {
-		if (err == 'Account not found') return {
+		if (err instanceof Error && err.message == 'Account not found') return {
 			frontier: null,
 			balance: '0'
 		}

@@ -1,9 +1,10 @@
 import { join } from 'path'
 import { Worker } from 'worker_threads'
-import { prisma } from '../../../prisma/client'
-import * as nanocurrency from 'nanocurrency'
-import { addEventListener } from '../../rpc'
+import { PrismaClient } from '@prisma/client'
 import { workerWorkSchema } from '../../models'
+import * as nanocurrency from 'nanocurrency'
+
+const prisma = new PrismaClient()
 
 const worker = new Worker(join(__dirname, './worker.js'))
 
@@ -82,10 +83,3 @@ export function precomputeWork(account: string, hash: string) {
 		})
 	}).catch(err => console.error('Error processing requested work', err))
 }
-
-addEventListener('message', ({ data }) => {
-	if ('message' in data && data.message.block.subtype == 'receive') {
-		const { account, hash } = data.message
-		precomputeWork(account, hash)
-	}
-})

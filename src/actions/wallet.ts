@@ -144,13 +144,7 @@ export const searchMissing = createAckQueue(searchAck, async (input: Record<stri
 	for (const { account } of accounts) {
 		console.log('Searching missed receive blocks for', account)
 
-		const { frontier } = await rpcSend<RPC.AccountInfo>({
-			action: 'account_info',
-			account,
-		}).catch(err => {
-			if (err == 'Account not found') return { frontier: null }
-			throw err
-		})
+		const { frontier } = await accountInfo(account)
 		if (!frontier) continue
 
 		const zeroBlock = '0'.repeat(64)

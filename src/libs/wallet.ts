@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client'
 import config from '../config'
 import { rpcSend } from '../rpc'
 import { HttpError } from '../errors'
-import { getWork } from '../libs/work'
+import { getWork, precomputeWork } from '../libs/work'
 import { createQueue } from '../libs/queue'
 import { accountInfo } from '../libs/accounts'
 
@@ -72,6 +72,21 @@ export const receiveBlock: Receive = createQueue(async ({ hash, account, amount 
 			block,
 		})
 		console.log('receive process response', res)
+
+		precomputeWork(account, res.hash)
+
+		await prisma.block.upsert({
+			where: { hash: res.hash },
+			create: {
+				hash: res.hash,
+				amount,
+				link: hash,
+				subtype: 'receive',
+				time: new Date(),
+				account_id: account,
+			},
+			update: {},
+		})
 
 		return {
 			hash: res.hash
