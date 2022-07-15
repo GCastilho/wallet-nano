@@ -49,6 +49,8 @@ function parseJsonOrReturn(input: string): Record<string, unknown>|string {
 
 /**
  * Register an event handler of a specific event type
+ * TODO: Corrigir socket causando crash se não consegue conexão
+ * TODO: Corrigir mensagem de disconnect estar aparecendo repetidas vezes
  * @returns Function to remove the listeners
  */
 export function addEventListener<T extends keyof Events>(event: T, handler: Events[T]) {

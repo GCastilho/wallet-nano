@@ -105,3 +105,13 @@ export const receiveMinimumSchema = new Validator({
 		},
 	}
 })
+
+export const passwordSchema = new Validator({
+	type: 'object',
+	properties: {
+		wallet: walletSchema.schema.properties.wallet,
+		password: {
+			type: 'string',
+		}
+	}
+})

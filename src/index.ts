@@ -29,6 +29,10 @@ app.post('/', async (req, res, next) => {
 			case 'search_missing': handler = actions.searchMissing; break
 			case 'receive': handler = actions.receive; break
 			case 'receive_all': handler = actions.searchPending; break
+			case 'wallet_lock': handler = actions.walletLock; break
+			case 'password_enter': handler = actions.passwordEnter; break
+			case 'password_change': handler = actions.passwordChanged; break
+			case 'wallet_locked': handler = actions.walletLocked; break
 			case 'receive_minimum': handler = actions.receiveMinimum; break
 			case 'receive_minimum_set': handler = actions.receiveMinimumSet; break
 			default: handler = () => rpcSend({ action, ...body }); break

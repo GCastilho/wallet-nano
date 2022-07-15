@@ -10,7 +10,7 @@ datasource db {
 model Wallet {
   id             String    @id @default(uuid())
   seed           String
-  mnemonic       String
+  seed_iv        String?
   representative String    @default("nano_3arg3asgtigae3xckabaaewkx3bzsh7nwz7jkmjos79ihyaxwphhm6qgjps4")
   created_at     DateTime  @default(now())
   updated_at     DateTime  @updatedAt
@@ -23,7 +23,6 @@ model Account {
   account       String   @id
   account_index Int
   balance       String   @default("0")
-  private_key   String
   wallet_id     String
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt

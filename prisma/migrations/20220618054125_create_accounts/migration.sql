@@ -3,7 +3,6 @@ CREATE TABLE "accounts" (
     "account" CHAR(65) NOT NULL PRIMARY KEY,
     "account_index" INTEGER NOT NULL,
     "balance" VARCHAR(39) NOT NULL DEFAULT '0',
-    "private_key" CHAR(64) NOT NULL,
     "wallet_id" CHAR(36) NOT NULL,
     "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP NOT NULL,

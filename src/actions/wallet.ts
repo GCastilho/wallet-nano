@@ -1,27 +1,27 @@
-import * as nano from 'nanocurrency-web'
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
 import { HttpError } from '../errors'
 import { rpcSend, wsSend } from '../rpc'
-import { receiveBlock } from '../libs/wallet'
 import { accountInfo } from '../libs/accounts'
-import { walletSchema, sendSchema, receiveSchema } from '../models'
 import { getWork, precomputeWork } from '../libs/work'
 import { createQueue, createAckQueue } from '../libs/queue'
+import { walletSchema, sendSchema, receiveSchema } from '../models'
+import { deriveAccount, fetchSeed, receiveBlock } from '../libs/wallet'
+import * as nano from 'nanocurrency-web'
 import type { RPC } from '../rpc'
 
 const prisma = new PrismaClient()
 
 export async function walletCreate() {
 	const entropy = randomBytes(32)
-	const { seed, mnemonic } = wallet.generate(entropy.toString('hex'))
+	const { seed } = wallet.generate(entropy.toString('hex'))
 
 	const { id } = await prisma.wallet.create({
 		select: {
 			id: true,
 		},
-		data: { seed, mnemonic }
+		data: { seed }
 	})
 
 	return {
@@ -223,7 +223,7 @@ export async function send(input: Record<string, unknown>) {
 	const result = await prisma.account.findFirst({
 		select: {
 			balance: true,
-			private_key: true,
+			account_index: true,
 			blocks: {
 				select: {
 					hash: true,
@@ -246,6 +246,9 @@ export async function send(input: Record<string, unknown>) {
 	})
 	if (!result) throw new HttpError('NOT_FOUND', 'Wallet not found')
 
+	const seed = await fetchSeed(wallet)
+	const { privateKey } = deriveAccount(seed, result.account_index)
+
 	const frontier = result.blocks[0]?.hash
 	if (!frontier) {
 		throw new HttpError('NOT_FOUND', `Frontier not found for '${source}'`)
@@ -262,7 +265,7 @@ export async function send(input: Record<string, unknown>) {
 		toAddress: destination,
 		walletBalanceRaw: result.balance,
 		work: await getWork(source, frontier),
-	}, result.private_key)
+	}, privateKey)
 	console.log('send block', block)
 
 	const res = await rpcSend<{ hash: string }>({
