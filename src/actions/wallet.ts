@@ -180,6 +180,14 @@ export const searchMissing = createAckQueue(searchAck, async (input: Record<stri
 			})
 			hash = previous
 		}
+
+		// Atualiza o saldo
+		const { balance } = await accountInfo(account)
+		await prisma.account.update({
+			select: null,
+			where: { account },
+			data: { balance },
+		})
 	}
 })
 

@@ -154,8 +154,10 @@ export const receiveBlock: Receive = createQueue(async ({ hash, account, amount 
 			hash: res.hash
 		}
 	} catch (err) {
-		if (err instanceof Error && err.message == 'Fork') {
-			console.log(`RPC returned 'Fork' for ${hash}, this usually means the wallet is not synchronized with the network. Trying again using account_info to fetch the frontier...`)
+		if (err instanceof Error && (
+			err.message == 'Fork' || err.message == 'Balance and amount delta do not match'
+		)) {
+			console.log(`RPC returned ${err.message} for ${hash}, this usually means the wallet is not synchronized with the network. Trying again using account_info to fetch the frontier...`)
 			const { frontier, balance } = await accountInfo(account)
 			return receiveBlock({ hash, account, amount }, { frontier, balance })
 		} else throw err

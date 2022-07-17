@@ -3,7 +3,6 @@ import { passwordSchema, walletSchema } from '../models'
 
 /**
  * TODO: Colocar um 'message' com o motivo de o valid/change ter sido 0
- * TODO: Ao receber, não dar erro por causa da wallet estar locked
  */
 
 type Changed = {
