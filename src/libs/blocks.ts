@@ -12,7 +12,6 @@ import type { WebSocket } from '../rpc'
 
 const prisma = new PrismaClient()
 
-// TODO: Atualizar rep da wallet a cada bloco?
 async function handleMessage(data: WebSocket.Message) {
 	console.log('handleMessage', data)
 	const { time } = data

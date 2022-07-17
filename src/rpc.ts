@@ -18,11 +18,17 @@ const ws = new ReconnectingWebSocket(nanoSocketUrl, [], {
 	maxReconnectionDelay: 2000, // Wait max of 2 seconds before retrying
 })
 
+/** If ws connection is already closed */
+let wasClosed = true
+
 ws.addEventListener('open', () => {
+	wasClosed = false
 	console.log('Websocket connection open')
 })
 
 ws.addEventListener('close', () => {
+	if (wasClosed) return
+	wasClosed = true
 	console.log('Websocket connection closed')
 })
 
@@ -49,8 +55,6 @@ function parseJsonOrReturn(input: string): Record<string, unknown>|string {
 
 /**
  * Register an event handler of a specific event type
- * TODO: Corrigir socket causando crash se não consegue conexão
- * TODO: Corrigir mensagem de disconnect estar aparecendo repetidas vezes
  * @returns Function to remove the listeners
  */
 export function addEventListener<T extends keyof Events>(event: T, handler: Events[T]) {
