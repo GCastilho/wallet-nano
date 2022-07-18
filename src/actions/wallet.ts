@@ -222,6 +222,7 @@ export const receive = createQueue(async (input: Record<string, unknown>) => {
 
 export async function send(input: Record<string, unknown>) {
 	const {
+		id,
 		amount,
 		destination,
 		source,
@@ -253,7 +254,20 @@ export async function send(input: Record<string, unknown>) {
 			account: source,
 		},
 	})
-	if (!result) throw new HttpError('NOT_FOUND', 'Wallet not found')
+	if (!result) throw new HttpError('NOT_FOUND', 'Wallet + account not found')
+
+	// Check if we already received a send request with that id
+	if (id) {
+		const { hash } = await prisma.block.findFirst({
+			select: {
+				hash: true,
+			},
+			where: { id }
+		}) || {}
+		if (hash) return {
+			block: hash
+		}
+	}
 
 	const seed = await fetchSeed(wallet)
 	const { privateKey } = deriveAccount(seed, result.account_index)
@@ -277,6 +291,21 @@ export async function send(input: Record<string, unknown>) {
 	}, privateKey)
 	console.log('send block', block)
 
+	// Create block (with provided id) and without hash to prevent double spend
+	const { id: createdId } = await prisma.block.create({
+		select: {
+			id: true,
+		},
+		data: {
+			id,
+			amount,
+			account_id: source,
+			link: destination,
+			subtype: 'send',
+			time: new Date(),
+		}
+	})
+
 	const res = await rpcSend<{ hash: string }>({
 		action: 'process',
 		json_block: 'true',
@@ -294,12 +323,13 @@ export async function send(input: Record<string, unknown>) {
 		data: {
 			balance: block.balance,
 			blocks: {
-				create: {
-					hash: res.hash,
-					amount,
-					link: destination,
-					subtype: 'send',
-					time: new Date(),
+				update: {
+					where: {
+						id: createdId
+					},
+					data: {
+						hash: res.hash
+					},
 				}
 			}
 		}

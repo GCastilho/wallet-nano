@@ -35,7 +35,8 @@ model Account {
 }
 
 model Block {
-  hash       String   @id
+  id         String   @id @default(cuid())
+  hash       String?  @unique
   link       String
   subtype    String
   amount     String
@@ -56,5 +57,5 @@ model Work {
   updated_at DateTime @updatedAt
   account    Account  @relation(fields: [address], references: [account], onDelete: Cascade)
 
-  @@map("works")
+  @@map("work_cache")
 }

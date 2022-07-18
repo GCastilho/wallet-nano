@@ -1,6 +1,7 @@
 -- CreateTable
 CREATE TABLE "blocks" (
-    "hash" CHAR(64) NOT NULL PRIMARY KEY,
+    "id" VARCHAR(64) NOT NULL PRIMARY KEY,
+    "hash" CHAR(64),
     "link" CHAR(64) NOT NULL,
     "subtype" VARCHAR(8) NOT NULL,
     "amount" VARCHAR(39) NOT NULL,
@@ -10,3 +11,6 @@ CREATE TABLE "blocks" (
     "updated_at" TIMESTAMP NOT NULL,
     CONSTRAINT "blocks_account_id_fkey" FOREIGN KEY ("account_id") REFERENCES "accounts" ("account") ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "blocks_hash_key" ON "blocks"("hash");

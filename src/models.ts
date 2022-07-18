@@ -20,8 +20,7 @@ type InferType<P extends JSONSchema7Definition> =
 		P['type'] extends 'string' ? string :
 			P['type'] extends ('number'|'integer') ? number :
 				P['type'] extends 'boolean' ? boolean :
-					P['type'] extends 'null' ? null :
-						{
+					P['type'] extends 'null' ? null : {
 							[K in keyof NonNullable<P['properties']>]:
 								InferType<NonNullable<P['properties']>[K]>
 						}
@@ -61,6 +60,9 @@ const accountSchema = new Validator({
 export const sendSchema = new Validator({
 	type: 'object',
 	properties: {
+		id: {
+			type: 'string'
+		},
 		wallet: walletSchema.schema.properties.wallet,
 		source: accountSchema.schema,
 		destination: accountSchema.schema,

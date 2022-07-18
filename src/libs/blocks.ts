@@ -77,7 +77,6 @@ type Receive = (params: {
 	balance?: string
 }) => Promise<{ hash: string }>
 
-// TODO: Aceitar ID no receive e usar isso para idempotencia (no send tbm)
 export const receiveBlock: Receive = createQueue(async ({ hash, account, amount }, options) => {
 	console.log('received block', { hash, account, amount })
 
