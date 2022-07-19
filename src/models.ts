@@ -1,4 +1,22 @@
 import { object, string } from 'yup'
+import { StatusCodes } from 'http-status-codes'
+
+type HttpStatus = keyof typeof StatusCodes
+
+export class WalletError extends Error {
+	/** Código HTTP do erro */
+	public readonly code: number
+
+	/** Razão desse erro ter ocorrido */
+	public readonly reason: string
+
+	constructor(reason: string, code?: HttpStatus, message?: string) {
+		super(message)
+		this.name = 'WalletError'
+		this.reason = reason
+		this.code = StatusCodes[code || 'INTERNAL_SERVER_ERROR']
+	}
+}
 
 export const walletSchema = object().shape({
 	wallet: string().required().length(36)

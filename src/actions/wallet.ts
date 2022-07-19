@@ -1,14 +1,13 @@
 import { randomBytes } from 'crypto'
 import { wallet } from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
-import { HttpError } from '../errors'
 import { rpcSend, wsSend } from '../rpc'
 import { receiveBlock } from '../libs/blocks'
 import { accountInfo } from '../libs/accounts'
 import { getWork, precomputeWork } from '../libs/work'
-import { createQueue, createAckQueue } from '../libs/queue'
-import { walletSchema, sendSchema, receiveSchema } from '../models'
 import { deriveAccount, fetchSeed } from '../libs/wallet'
+import { createQueue, createAckQueue } from '../libs/queue'
+import { walletSchema, sendSchema, receiveSchema, WalletError } from '../models'
 import * as nano from 'nanocurrency-web'
 import type { RPC } from '../rpc'
 
@@ -205,7 +204,7 @@ export const receive = createQueue(async (input: Record<string, unknown>) => {
 			wallet_id: wallet,
 		},
 	})
-	if (!result) throw new HttpError('NOT_FOUND', 'Wallet or account not found')
+	if (!result) throw new WalletError('Wallet or account not found', 'NOT_FOUND')
 
 	const { amount } = await rpcSend<RPC.BlockInfo>({
 		action: 'block_info',
@@ -254,7 +253,7 @@ export async function send(input: Record<string, unknown>) {
 			account: source,
 		},
 	})
-	if (!result) throw new HttpError('NOT_FOUND', 'Wallet + account not found')
+	if (!result) throw new WalletError('Wallet + account not found', 'NOT_FOUND')
 
 	// Check if we already received a send request with that id
 	if (id) {
@@ -274,10 +273,10 @@ export async function send(input: Record<string, unknown>) {
 
 	const frontier = result.blocks[0]?.hash
 	if (!frontier) {
-		throw new HttpError('NOT_FOUND', `Frontier not found for '${source}'`)
+		throw new WalletError(`Frontier not found for '${source}'`, 'NOT_FOUND')
 	}
 	if (BigInt(amount) > BigInt(result.balance)) {
-		throw new HttpError('PRECONDITION_FAILED', 'Not enough balance')
+		throw new WalletError('Not enough balance', 'PRECONDITION_FAILED')
 	}
 
 	const block = nano.block.send({

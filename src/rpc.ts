@@ -2,9 +2,9 @@ import WS from 'ws'
 import axios, { AxiosError } from 'axios'
 import { StatusCodes } from 'http-status-codes'
 import ReconnectingWebSocket from 'reconnecting-websocket'
-import { HttpError } from './errors'
 import type { WebSocket } from './rpc.d'
 import type { WebSocketEventListenerMap, WebSocketEventMap } from 'reconnecting-websocket/dist/events'
+import { WalletError } from './models'
 export type { RPC, WebSocket } from './rpc.d'
 
 const nanoRpcUrl = process.env.NANO_RPC_URL || 'http://127.0.0.1:55000'
@@ -110,7 +110,7 @@ export async function rpcSend<T = JSON, Input extends Action = Action>(data: Inp
 	} catch (err) {
 		if (err instanceof AxiosError) {
 			const reason = StatusCodes[err.response?.status as number] || 'INTERNAL_SERVER_ERROR'
-			throw new HttpError(reason as keyof typeof StatusCodes, err.message, err.name)
+			throw new WalletError(err.name, reason as keyof typeof StatusCodes, err.message)
 		} else {
 			throw err
 		}

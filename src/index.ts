@@ -2,7 +2,7 @@ import express from 'express'
 import { AssertionError } from 'assert'
 import { getReasonPhrase } from 'http-status-codes'
 import { open, rpcSend } from './rpc'
-import { HttpError } from './errors'
+import { WalletError } from './models'
 import * as actions from './actions'
 import type { Request, Response, NextFunction } from 'express'
 
@@ -42,14 +42,14 @@ app.post('/', async (req, res, next) => {
 			const data = await handler(body)
 			res.status(200).send(data)
 		} else {
-			throw new HttpError('NOT_FOUND', 'Method not found')
+			throw new WalletError('Method not found', 'NOT_FOUND')
 		}
 	} catch (err) {
 		next(err)
 	}
 })
 
-type ApiErrors = HttpError|AssertionError|unknown;
+type ApiErrors = AssertionError|unknown;
 app.use((
 	err: ApiErrors,
 	_req: Request,
@@ -57,10 +57,10 @@ app.use((
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	_next: NextFunction,
 ) => {
-	if (err instanceof HttpError) {
+	if (err instanceof WalletError) {
 		res.status(err.code).send({
 			error: err.reason,
-			message: err.message
+			message: err.message,
 		})
 	} else if (err instanceof AssertionError) {
 		res.status(400).send({

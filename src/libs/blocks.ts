@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client'
-import { HttpError } from '../errors'
 import config from '../config'
 import { rpcSend } from '../rpc'
+import { WalletError } from '../models'
 import { addEventListener } from '../rpc'
 import { createQueue } from '../libs/queue'
 import { accountInfo } from '../libs/accounts'
@@ -54,7 +54,7 @@ async function handleMessage(data: WebSocket.Message) {
 			amount,
 			hash,
 		}).catch(err => {
-			if (!(err instanceof HttpError && err.code == 404)) throw err
+			if (!(err instanceof WalletError && err.code == 404)) throw err
 		})
 	}
 }
@@ -105,7 +105,7 @@ export const receiveBlock: Receive = createQueue(async ({ hash, account, amount 
 		},
 		where: { account }
 	})
-	if (!result) throw new HttpError('NOT_FOUND', 'Account not found')
+	if (!result) throw new WalletError('Account not found', 'NOT_FOUND')
 
 	const seed = await fetchSeed(result.wallet.id)
 	const { privateKey } = deriveAccount(seed, result.account_index)

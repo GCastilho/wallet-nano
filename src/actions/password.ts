@@ -4,7 +4,6 @@ import { passwordSchema, walletSchema } from '../models'
 /**
  * TODO: Colocar um 'message' com o motivo de o valid/change ter sido 0
  * TODO: Corrigir certos erros conhecidos estarem retornando 500
- * TODO: Refazer o httpError para retornar no padrão da NANO e com status correto
  */
 
 type Changed = {
