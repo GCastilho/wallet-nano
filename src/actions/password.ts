@@ -11,7 +11,7 @@ type Changed = {
 	changed: '0'|'1'
 }
 export async function passwordChanged(input: Record<string, unknown>): Promise<Changed> {
-	const { wallet, password } = passwordSchema.validate(input)
+	const { wallet, password } = await passwordSchema.validate(input)
 	try {
 		await updatePassword(wallet, password)
 		return { changed: '1' }
@@ -24,7 +24,7 @@ type Valid = {
 	valid: '0'|'1'
 }
 export async function passwordEnter(input: Record<string, unknown>): Promise<Valid> {
-	const { wallet, password } = passwordSchema.validate(input)
+	const { wallet, password } = await passwordSchema.validate(input)
 	try {
 		await unlock(wallet, password)
 		return { valid: '1' }
@@ -37,7 +37,7 @@ type Locked = {
 	locked: '0'|'1'
 }
 export async function walletLock(input: Record<string, unknown>): Promise<Locked> {
-	const { wallet } = walletSchema.validate(input)
+	const { wallet } = await walletSchema.validate(input)
 	try {
 		await lock(wallet)
 		return { locked: '1' }
@@ -47,7 +47,7 @@ export async function walletLock(input: Record<string, unknown>): Promise<Locked
 }
 
 export async function walletLocked(input: Record<string, unknown>): Promise<Locked> {
-	const { wallet } = walletSchema.validate(input)
+	const { wallet } = await walletSchema.validate(input)
 	return await isLocked(wallet) ? {
 		locked: '1'
 	} : {

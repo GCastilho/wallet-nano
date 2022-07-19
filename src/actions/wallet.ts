@@ -31,7 +31,7 @@ export async function walletCreate() {
 }
 
 export async function walletDestroy(input: Record<string, unknown>) {
-	const { wallet } = walletSchema.validate(input)
+	const { wallet } = await walletSchema.validate(input)
 
 	const destroyed = await prisma.wallet.delete({
 		select: {
@@ -63,9 +63,9 @@ export async function walletDestroy(input: Record<string, unknown>) {
 type Started = {
 	started: '0'|'1'
 }
-function searchAck(input: Record<string, unknown>): Started {
+async function searchAck(input: Record<string, unknown>): Promise<Started> {
 	try {
-		const { wallet } = walletSchema.validate(input)
+		const { wallet } = await walletSchema.validate(input)
 		if (searching.has(wallet)) return {
 			started: '1'
 		}
@@ -83,7 +83,7 @@ function searchAck(input: Record<string, unknown>): Started {
 const searching = new Set<string>()
 
 export const searchPending = createAckQueue(searchAck, async (input: Record<string, unknown>) => {
-	const { wallet } = walletSchema.validate(input)
+	const { wallet } = await walletSchema.validate(input)
 	const accounts = await prisma.account.findMany({
 		select: {
 			account: true,
@@ -132,7 +132,7 @@ export const searchPending = createAckQueue(searchAck, async (input: Record<stri
 
 /** Procura por blocos nossos não processados */
 export const searchMissing = createAckQueue(searchAck, async (input: Record<string, unknown>) => {
-	const { wallet } = walletSchema.validate(input)
+	const { wallet } = await walletSchema.validate(input)
 	const accounts = await prisma.account.findMany({
 		select: {
 			account: true,
@@ -196,7 +196,7 @@ export const receive = createQueue(async (input: Record<string, unknown>) => {
 		block,
 		account,
 		wallet,
-	} = receiveSchema.validate(input)
+	} = await receiveSchema.validate(input)
 
 	const result = await prisma.account.findFirst({
 		select: null,
@@ -227,7 +227,7 @@ export async function send(input: Record<string, unknown>) {
 		destination,
 		source,
 		wallet,
-	} = sendSchema.validate(input)
+	} = await sendSchema.validate(input)
 	console.log('send request received', input)
 
 	const result = await prisma.account.findFirst({
@@ -297,7 +297,9 @@ export async function send(input: Record<string, unknown>) {
 			id: true,
 		},
 		data: {
-			id,
+			...(id ? {
+				id,
+			} : {}),
 			amount,
 			account_id: source,
 			link: destination,

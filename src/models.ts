@@ -1,119 +1,35 @@
-import { validate } from 'json-schema'
-import { HttpError } from './errors'
-import type { JSONSchema7, JSONSchema7Definition } from 'json-schema'
+import { object, string } from 'yup'
 
-export interface Schema<P> extends JSONSchema7 {
-	type:
-		P extends string ? 'string' :
-			P extends number ? ('number'|'integer') :
-				P extends boolean ? 'boolean' :
-					P extends Array<unknown> ? 'array' :
-						P extends null ? 'null' :
-							'object'
-	properties?: {
-		[K in keyof P]: Schema<P[K]>
-	}
-}
-
-type InferType<P extends JSONSchema7Definition> =
-	P extends JSONSchema7 ?
-		P['type'] extends 'string' ? string :
-			P['type'] extends ('number'|'integer') ? number :
-				P['type'] extends 'boolean' ? boolean :
-					P['type'] extends 'null' ? null : {
-							[K in keyof NonNullable<P['properties']>]:
-								InferType<NonNullable<P['properties']>[K]>
-						}
-	: boolean
-
-class Validator<T extends Schema<any>> {
-	constructor(public schema: T) {}
-
-	validate(data: any): InferType<T> {
-		const { valid, errors } = validate(this.schema, data)
-		if (valid) return data
-		throw new HttpError(
-			'BAD_REQUEST',
-			errors.map(v => `${v.property} ${v.message}.`).join(' '),
-			'Validation Error',
-		)
-	}
-}
-
-export const walletSchema = new Validator({
-	type: 'object',
-	properties: {
-		wallet: {
-			type: 'string',
-			minLength: 36,
-			maxLength: 36,
-		},
-	}
+export const walletSchema = object().shape({
+	wallet: string().required().length(36)
 })
 
-const accountSchema = new Validator({
-	type: 'string',
-	minLength: 65,
-	maxLength: 65,
+const accountSchema = string().required().length(65)
+
+export const sendSchema = object().shape({
+	id: string(),
+	wallet: walletSchema.fields.wallet,
+	source: accountSchema,
+	destination: accountSchema,
+	amount: string().required(),
 })
 
-export const sendSchema = new Validator({
-	type: 'object',
-	properties: {
-		id: {
-			type: 'string'
-		},
-		wallet: walletSchema.schema.properties.wallet,
-		source: accountSchema.schema,
-		destination: accountSchema.schema,
-		amount: {
-			type: 'string',
-		},
-	}
+export const receiveSchema = object().shape({
+	wallet: walletSchema.fields.wallet,
+	account: accountSchema,
+	block: string().required().length(64),
 })
 
-export const receiveSchema = new Validator({
-	type: 'object',
-	properties: {
-		wallet: walletSchema.schema.properties.wallet,
-		account: accountSchema.schema,
-		block: {
-			type: 'string',
-			maxLength: 64,
-			minLength: 64,
-		}
-	}
+export const workerWorkSchema = object().shape({
+	blockHash: string().required().length(64),
+	work: string().required()
 })
 
-export const workerWorkSchema = new Validator({
-	type: 'object',
-	properties: {
-		blockHash: {
-			type: 'string',
-			maxLength: 64,
-			minLength: 64,
-		},
-		work: {
-			type: 'string'
-		}
-	}
+export const receiveMinimumSchema = object().shape({
+	amount: string().required(),
 })
 
-export const receiveMinimumSchema = new Validator({
-	type: 'object',
-	properties: {
-		amount: {
-			type: 'string',
-		},
-	}
-})
-
-export const passwordSchema = new Validator({
-	type: 'object',
-	properties: {
-		wallet: walletSchema.schema.properties.wallet,
-		password: {
-			type: 'string',
-		}
-	}
+export const passwordSchema = object().shape({
+	wallet: walletSchema.fields.wallet,
+	password: string().required(),
 })

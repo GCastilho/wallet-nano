@@ -7,8 +7,8 @@ export function receiveMinimum() {
 	}
 }
 
-export function receiveMinimumSet(input: Record<string, unknown>) {
-	const { amount } = receiveMinimumSchema.validate(input)
+export async function receiveMinimumSet(input: Record<string, unknown>) {
+	const { amount } = await receiveMinimumSchema.validate(input)
 	config.receiveMinimum = amount
 	return {
 		success: ''

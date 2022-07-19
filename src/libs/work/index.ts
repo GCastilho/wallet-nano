@@ -14,14 +14,14 @@ function generateWork(account: string, hash: string|null|undefined) {
 	return new Promise<string>((resolve, reject) => {
 		const hashMessage = hash || nanocurrency.derivePublicKey(account)
 		worker.postMessage(hashMessage)
-		const handler = (message: unknown) => {
+		const handler = async (message: unknown) => {
 			// @ts-expect-error A classe é definida no .js do worker
 			if (message instanceof Error && message['blockHash'] == hash) {
 				worker.off('message', handler)
 				return reject(message)
 			}
 			try {
-				const { blockHash, work } = workerWorkSchema.validate(message)
+				const { blockHash, work } = await workerWorkSchema.validate(message)
 				if (blockHash != hashMessage) return // Not the message we sent
 				resolve(work)
 			} catch (err) {

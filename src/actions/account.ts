@@ -6,7 +6,7 @@ import { deriveAccount, fetchSeed } from '../libs/wallet'
 const prisma = new PrismaClient()
 
 export async function accountCreate(input: Record<string, unknown>) {
-	const { wallet } = walletSchema.validate(input)
+	const { wallet } = await walletSchema.validate(input)
 	const seed = await fetchSeed(wallet)
 
 	const {
