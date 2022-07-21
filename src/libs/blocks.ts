@@ -12,7 +12,11 @@ import type { WebSocket } from '../rpc'
 
 const prisma = new PrismaClient()
 
-async function handleMessage(data: WebSocket.Message) {
+/**
+ * Handle socket message
+ * This queue can be optimized by individual queues for each account
+ */
+const handleMessage = createQueue(async function handler(data: WebSocket.Message) {
 	console.log('handleMessage', data)
 	const { time } = data
 	const { hash, amount } = data.message
@@ -57,9 +61,8 @@ async function handleMessage(data: WebSocket.Message) {
 			if (!(err instanceof WalletError && err.code == 404)) throw err
 		})
 	}
-}
+})
 
-// TODO: enfileirar os handlers para prevenir race condition
 addEventListener('message', ({ data }) => {
 	if ('ack' in data) return console.log('Websocket ack received:', data)
 	if ('error' in data) return console.error('WebSocket error message', data)
