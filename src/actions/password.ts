@@ -1,13 +1,9 @@
 import { isLocked, lock, unlock, updatePassword } from '../libs/wallet'
 import { passwordSchema, walletSchema } from '../models'
 
-/**
- * TODO: Colocar um 'message' com o motivo de o valid/change ter sido 0
- * TODO: Corrigir certos erros conhecidos estarem retornando 500
- */
-
 type Changed = {
 	changed: '0'|'1'
+	message?: unknown
 }
 export async function passwordChanged(input: Record<string, unknown>): Promise<Changed> {
 	const { wallet, password } = await passwordSchema.validate(input)
@@ -15,12 +11,13 @@ export async function passwordChanged(input: Record<string, unknown>): Promise<C
 		await updatePassword(wallet, password)
 		return { changed: '1' }
 	} catch (err) {
-		return { changed: '0' }
+		return { changed: '0', message: err instanceof Error ? err.message : err }
 	}
 }
 
 type Valid = {
 	valid: '0'|'1'
+	message?: unknown
 }
 export async function passwordEnter(input: Record<string, unknown>): Promise<Valid> {
 	const { wallet, password } = await passwordSchema.validate(input)
@@ -28,7 +25,7 @@ export async function passwordEnter(input: Record<string, unknown>): Promise<Val
 		await unlock(wallet, password)
 		return { valid: '1' }
 	} catch (err) {
-		return { valid: '0' }
+		return { valid: '0', message: err instanceof Error ? err.message : err }
 	}
 }
 

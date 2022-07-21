@@ -62,6 +62,10 @@ app.use((
 			error: err.reason,
 			message: err.message,
 		})
+	} else if (err instanceof Error && err.name == 'RpcError') {
+		res.status(400).send({
+			error: err.message,
+		})
 	} else if (err instanceof AssertionError) {
 		res.status(400).send({
 			error: err.name,
@@ -70,11 +74,6 @@ app.use((
 	} else if (err instanceof Error && err.name == 'NotFoundError') {
 		res.status(404).send({
 			error: getReasonPhrase(404),
-			message: err.message
-		})
-	} else if (err instanceof Error && err.name == 'RpcError') {
-		res.status(400).send({
-			error: 'RpcError',
 			message: err.message
 		})
 	} else {

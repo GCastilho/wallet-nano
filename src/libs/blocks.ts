@@ -59,7 +59,7 @@ async function handleMessage(data: WebSocket.Message) {
 	}
 }
 
-/** enfileirar os handlers para prevenir race condition */
+// TODO: enfileirar os handlers para prevenir race condition
 addEventListener('message', ({ data }) => {
 	if ('ack' in data) return console.log('Websocket ack received:', data)
 	if ('error' in data) return console.error('WebSocket error message', data)
@@ -81,7 +81,10 @@ export const receiveBlock: Receive = createQueue(async ({ hash, account, amount 
 	console.log('received block', { hash, account, amount })
 
 	if (BigInt(amount || 0) < BigInt(config.receiveMinimum))
-		throw new Error(`Amount '${amount}' is less than received minumum '${config.receiveMinimum}' for ${hash}'`)
+		throw new WalletError(
+			`Amount '${amount}' is less than received minumum '${config.receiveMinimum}' for ${hash}'`,
+			'FORBIDDEN'
+		)
 
 	const result = await prisma.account.findUnique({
 		select: {

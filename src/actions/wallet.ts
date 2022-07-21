@@ -61,6 +61,7 @@ export async function walletDestroy(input: Record<string, unknown>) {
 
 type Started = {
 	started: '0'|'1'
+	message?: unknown
 }
 async function searchAck(input: Record<string, unknown>): Promise<Started> {
 	try {
@@ -74,7 +75,8 @@ async function searchAck(input: Record<string, unknown>): Promise<Started> {
 		}
 	} catch (err) {
 		return {
-			started: '0'
+			started: '0',
+			message: err instanceof Error ? err.message : err,
 		}
 	}
 }
@@ -257,7 +259,7 @@ export async function send(input: Record<string, unknown>) {
 
 	// Check if we already received a send request with that id
 	if (id) {
-		const { hash } = await prisma.block.findFirst({
+		const { hash } = await prisma.block.findUnique({
 			select: {
 				hash: true,
 			},
@@ -290,7 +292,7 @@ export async function send(input: Record<string, unknown>) {
 	}, privateKey)
 	console.log('send block', block)
 
-	// Create block (with provided id) and without hash to prevent double spend
+	// Create block with provided id and without hash to prevent double spend
 	const { id: createdId } = await prisma.block.create({
 		select: {
 			id: true,

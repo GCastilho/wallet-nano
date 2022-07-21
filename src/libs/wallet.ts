@@ -1,6 +1,7 @@
 import * as nano from 'nanocurrency-web'
 import { PrismaClient } from '@prisma/client'
 import { randomBytes, createHash, createCipheriv, createDecipheriv } from 'crypto'
+import { WalletError } from '../models'
 
 const prisma = new PrismaClient()
 
@@ -19,11 +20,11 @@ export async function fetchSeed(wallet: string) {
 			id: wallet
 		},
 		rejectOnNotFound() {
-			return new Error('Wallet not found')
+			return new WalletError('Wallet not found', 'NOT_FOUND')
 		},
 	})
 	// If seed_iv is present it means the seed is actually the encrypted seed
-	if (seed_iv) throw new Error('Wallet is encrypted')
+	if (seed_iv) throw new WalletError('Wallet is encrypted', 'LOCKED')
 
 	return seed
 }
@@ -65,10 +66,10 @@ export async function unlock(wallet: string, password: string) {
 		},
 		where: { id: wallet },
 		rejectOnNotFound() {
-			return new Error('Wallet not found')
+			return new WalletError('Wallet not found', 'NOT_FOUND')
 		},
 	})
-	if (!seed_iv) throw new Error('Invalid password')
+	if (!seed_iv) throw new WalletError('Invalid password', 'UNAUTHORIZED')
 
 	const iv = Buffer.from(seed_iv, 'base64')
 	const key = createHash('sha256').update(password).digest()
@@ -79,7 +80,7 @@ export async function unlock(wallet: string, password: string) {
 }
 
 export async function lock(wallet: string) {
-	if (!unlockedWallets.has(wallet)) throw new Error('Wallet is not locked')
+	if (!unlockedWallets.has(wallet)) throw new WalletError('Wallet is not locked', 'PRECONDITION_REQUIRED')
 	unlockedWallets.delete(wallet)
 }
 
@@ -93,7 +94,7 @@ export async function isLocked(wallet: string): Promise<boolean> {
 			id: wallet,
 		},
 		rejectOnNotFound() {
-			return new Error('Wallet not found')
+			return new WalletError('Wallet not found', 'NOT_FOUND')
 		},
 	})
 	return !!seed_iv
@@ -101,6 +102,6 @@ export async function isLocked(wallet: string): Promise<boolean> {
 
 export function deriveAccount(seed: string, index: number) {
 	const [account] = nano.wallet.accounts(seed, index, index)
-	if (!account) throw new Error('Account derivation returned null')
+	if (!account) throw new WalletError('Account derivation returned null', 'INTERNAL_SERVER_ERROR')
 	return account
 }
