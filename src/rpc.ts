@@ -109,8 +109,13 @@ export async function rpcSend<T = JSON, Input extends Action = Action>(data: Inp
 		return res.data
 	} catch (err) {
 		if (err instanceof AxiosError) {
+			const responseError = err.response?.data?.error
 			const reason = StatusCodes[err.response?.status as number] || 'INTERNAL_SERVER_ERROR'
-			throw new WalletError(err.name, reason as keyof typeof StatusCodes, err.message)
+			throw new WalletError(
+				responseError ? responseError : err.name,
+				reason as keyof typeof StatusCodes,
+				err.message
+			)
 		} else {
 			throw err
 		}

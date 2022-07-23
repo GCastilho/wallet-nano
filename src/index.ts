@@ -7,7 +7,7 @@ import * as actions from './actions'
 import type { Request, Response, NextFunction } from 'express'
 
 const {
-	PORT = '3000',
+	PORT = '45000',
 } = process.env
 
 const app = express()
@@ -63,7 +63,8 @@ app.use((
 			message: err.message,
 		})
 	} else if (err instanceof Error && err.name == 'RpcError') {
-		res.status(400).send({
+		// 200 is send to keep compatibility with NANO Node wallet
+		res.status(200).send({
 			error: err.message,
 		})
 	} else if (err instanceof AssertionError) {
