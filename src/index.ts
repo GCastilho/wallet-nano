@@ -1,13 +1,16 @@
 import express from 'express'
+import { WebSocketServer } from 'ws'
 import { AssertionError } from 'assert'
 import { getReasonPhrase } from 'http-status-codes'
 import { open, rpcSend } from './rpc'
 import { WalletError } from './models'
 import * as actions from './actions'
+import onConnection from './libs/websocket'
 import type { Request, Response, NextFunction } from 'express'
 
 const {
-	PORT = '45000',
+	RPC_PORT = '45000',
+	WEBSOCKET_PORT = '47000',
 } = process.env
 
 const app = express()
@@ -86,7 +89,21 @@ app.use((
 	}
 })
 
-app.listen(PORT, () => {
-	console.log('Server is up on port', +PORT)
+app.listen(RPC_PORT, () => {
+	console.log('Server is up on port', +RPC_PORT)
 	open()
 })
+
+const wss = new WebSocketServer({
+	port: +WEBSOCKET_PORT,
+})
+
+wss.on('listening', () => {
+	console.log('Websocket is listening on port', +WEBSOCKET_PORT)
+})
+
+wss.on('error', err => {
+	console.error('Websocket server error:', err)
+})
+
+wss.on('connection', onConnection)

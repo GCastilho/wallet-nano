@@ -32,6 +32,10 @@ ws.addEventListener('close', () => {
 	console.log('Websocket connection closed')
 })
 
+export function isOpen(): boolean {
+	return ws.readyState === ws.OPEN
+}
+
 /** Open websocket connection */
 export function open() {
 	if (ws.readyState == ws.CLOSED) ws.reconnect()
@@ -73,24 +77,22 @@ export function addEventListener<T extends keyof Events>(event: T, handler: Even
 		handler(msg)
 	}
 
-	const onOpen = () => ws.addEventListener(event, eventHandler)
+	ws.addEventListener(event, eventHandler)
 
-	if (ws.readyState == ws.CLOSED && event == 'message' || event == 'error') {
-		ws.addEventListener('open', onOpen)
-	} else {
-		ws.addEventListener(event, eventHandler)
-	}
-
-	return () => {
-		ws.removeEventListener('open', onOpen)
-		ws.removeEventListener(event, eventHandler)
-	}
+	return () => ws.removeEventListener(event, eventHandler)
 }
 
 /** Send message do webscoekt */
 export function wsSend(data: Record<string, unknown>) {
-	console.log('wsSend', data)
-	ws.send(JSON.stringify(data))
+	let removeListener = () => { return }
+	const send = () => {
+		console.log('wsSend', data)
+		ws.send(JSON.stringify(data))
+		removeListener()
+	}
+	if (ws.readyState == ws.CLOSED) {
+		removeListener = addEventListener('open', send)
+	} else send()
 }
 
 type Action = {

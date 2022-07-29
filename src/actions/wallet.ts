@@ -96,13 +96,11 @@ export const searchPending = createAckQueue(searchAck, async (input: Record<stri
 
 	console.log('Started search_pending for', wallet, accounts.map(v => v.account))
 	for (const { account } of accounts) {
-		console.log('Searching pending blocks for', account)
-
 		const { blocks } = await rpcSend<RPC.Pending>({
 			action: 'pending',
 			account,
 		})
-		console.log('Pending blocks for', account, blocks)
+		console.log('Pending blocks for', account, blocks || [])
 		for (const hash of blocks) {
 			const {
 				amount,
