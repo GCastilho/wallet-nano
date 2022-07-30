@@ -2,9 +2,10 @@ import WS from 'ws'
 import axios, { AxiosError } from 'axios'
 import { StatusCodes } from 'http-status-codes'
 import ReconnectingWebSocket from 'reconnecting-websocket'
+import config from './config'
+import { WalletError } from './models'
 import type { WebSocket } from './rpc.d'
 import type { WebSocketEventListenerMap, WebSocketEventMap } from 'reconnecting-websocket/dist/events'
-import { WalletError } from './models'
 export type { RPC, WebSocket } from './rpc.d'
 
 const nanoRpcUrl = process.env.NANO_RPC_URL || 'http://127.0.0.1:55000'
@@ -102,7 +103,9 @@ type Action = {
 type JSON = Record<string, unknown>
 export async function rpcSend<T = JSON, Input extends Action = Action>(data: Input): Promise<T> {
 	try {
-		const res = await axios.post(nanoRpcUrl, data)
+		const res = await axios.post(nanoRpcUrl, data, {
+			headers: config.customHeaders,
+		})
 		if (res.data.error) {
 			const error = new Error(res.data.error)
 			error.name = 'RpcError'

@@ -3,6 +3,7 @@ import path from 'path'
 
 const defaultConfig = {
 	receiveMinimum: '1000000000000000000000000',
+	customHeaders: {} as Record<string, string | number | boolean>,
 }
 
 let customConfig: typeof defaultConfig|undefined = undefined
