@@ -1,8 +1,9 @@
 import express from 'express'
+import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
 import { AssertionError } from 'assert'
 import { getReasonPhrase } from 'http-status-codes'
-import { open, rpcSend } from './rpc'
+import { open, rpcSend, addEventListener } from './rpc'
 import { WalletError } from './models'
 import * as actions from './actions'
 import onConnection from './libs/websocket'
@@ -90,16 +91,28 @@ app.use((
 })
 
 app.listen(RPC_PORT, () => {
-	console.log('Server is up on port', +RPC_PORT)
+	console.log('RPC Server is up on port', +RPC_PORT)
 	open()
 })
 
-const wss = new WebSocketServer({
-	port: +WEBSOCKET_PORT,
-})
+const wsServer = createServer()
 
-wss.on('listening', () => {
-	console.log('Websocket is listening on port', +WEBSOCKET_PORT)
+const wss = new WebSocketServer({ server: wsServer })
+
+addEventListener('open', () => {
+	// wait for node to initialize
+	setTimeout(() => {
+		wsServer.listen(WEBSOCKET_PORT, () => {
+			console.log('Websocket is listening on port', +WEBSOCKET_PORT)
+		})
+	}, 5000)
+
+	const removeListener = addEventListener('close', () => {
+		wss.clients.forEach(client => client.terminate())
+		wsServer.close()
+		removeListener()
+		console.log('WebSocket Server closed')
+	})
 })
 
 wss.on('error', err => {

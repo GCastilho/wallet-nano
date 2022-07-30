@@ -33,12 +33,12 @@ ws.addEventListener('close', () => {
 })
 
 export function isOpen(): boolean {
-	return ws.readyState === ws.OPEN
+	return ws.readyState == ws.OPEN
 }
 
 /** Open websocket connection */
 export function open() {
-	if (ws.readyState == ws.CLOSED) ws.reconnect()
+	if (ws.readyState != ws.OPEN) ws.reconnect()
 }
 
 /** Close websocket connection */
@@ -90,7 +90,7 @@ export function wsSend(data: Record<string, unknown>) {
 		ws.send(JSON.stringify(data))
 		removeListener()
 	}
-	if (ws.readyState == ws.CLOSED) {
+	if (ws.readyState != ws.OPEN) {
 		removeListener = addEventListener('open', send)
 	} else send()
 }
