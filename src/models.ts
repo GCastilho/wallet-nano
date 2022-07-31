@@ -43,6 +43,10 @@ export const workerWorkSchema = object().shape({
 	work: string().required()
 })
 
+export const workPrecomputeSchema = object().shape({
+	account: accountSchema,
+})
+
 export const receiveMinimumSchema = object().shape({
 	amount: string().required(),
 })

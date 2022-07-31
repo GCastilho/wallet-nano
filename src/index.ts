@@ -39,6 +39,8 @@ app.post('/', async (req, res, next) => {
 			case 'wallet_locked': handler = actions.walletLocked; break
 			case 'receive_minimum': handler = actions.receiveMinimum; break
 			case 'receive_minimum_set': handler = actions.receiveMinimumSet; break
+			case 'work_precompute': handler = actions.workPrecompute; break
+			case 'work_precompute_all': handler = actions.workPrecomputeAll; break
 			default: handler = () => rpcSend({ action, ...body }); break
 		}
 
