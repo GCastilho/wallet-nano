@@ -1,7 +1,7 @@
 -- CreateTable
 CREATE TABLE "blocks" (
     "id" VARCHAR(64) NOT NULL PRIMARY KEY,
-    "hash" CHAR(64),
+    "hash" VARCHAR(64),
     "link" CHAR(64) NOT NULL,
     "subtype" VARCHAR(8) NOT NULL,
     "amount" VARCHAR(39) NOT NULL,
