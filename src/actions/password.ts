@@ -5,7 +5,7 @@ type Changed = {
 	changed: '0'|'1'
 	message?: unknown
 }
-export async function passwordChanged(input: Record<string, unknown>): Promise<Changed> {
+export async function passwordChange(input: Record<string, unknown>): Promise<Changed> {
 	const { wallet, password } = await passwordSchema.validate(input)
 	try {
 		await updatePassword(wallet, password)

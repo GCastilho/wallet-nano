@@ -11,7 +11,7 @@ export class WalletError extends Error {
 	public readonly reason: string
 
 	constructor(reason: string, code?: HttpStatus, message?: string) {
-		super(message)
+		super(message || reason)
 		this.name = 'WalletError'
 		this.reason = reason
 		this.code = StatusCodes[code || 'INTERNAL_SERVER_ERROR']
@@ -53,5 +53,5 @@ export const receiveMinimumSchema = object().shape({
 
 export const passwordSchema = object().shape({
 	wallet: walletSchema.fields.wallet,
-	password: string().required(),
+	password: string().default(''),
 })

@@ -1,6 +1,7 @@
 import express from 'express'
 import { createServer } from 'http'
 import { WebSocketServer } from 'ws'
+import { ValidationError } from 'yup'
 import { AssertionError } from 'assert'
 import { getReasonPhrase } from 'http-status-codes'
 import { open, rpcSend, addEventListener } from './rpc'
@@ -35,7 +36,7 @@ app.post('/', async (req, res, next) => {
 			case 'receive_all': handler = actions.searchPending; break
 			case 'wallet_lock': handler = actions.walletLock; break
 			case 'password_enter': handler = actions.passwordEnter; break
-			case 'password_change': handler = actions.passwordChanged; break
+			case 'password_change': handler = actions.passwordChange; break
 			case 'wallet_locked': handler = actions.walletLocked; break
 			case 'receive_minimum': handler = actions.receiveMinimum; break
 			case 'receive_minimum_set': handler = actions.receiveMinimumSet; break
@@ -67,6 +68,11 @@ app.use((
 		res.status(err.code).send({
 			error: err.reason,
 			message: err.message,
+		})
+	} else if (err instanceof ValidationError) {
+		res.status(400).send({
+			error: err.name,
+			message: err.errors,
 		})
 	} else if (err instanceof Error && err.name == 'RpcError') {
 		// 200 is send to keep compatibility with NANO Node wallet
