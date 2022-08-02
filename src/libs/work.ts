@@ -1,36 +1,51 @@
-import { join } from 'path'
-import { Worker } from 'worker_threads'
+import os from 'os'
 import { PrismaClient } from '@prisma/client'
-import { workerWorkSchema } from '../../models'
+import { StaticPool } from 'node-worker-threads-pool'
+import config from '../config'
 import * as nanocurrency from 'nanocurrency'
 
 const prisma = new PrismaClient()
 
-const worker = new Worker(join(__dirname, './worker.js'))
-
 const workPromises = new Map<string, Promise<string>>()
 
-function generateWork(account: string, hash: string|null|undefined) {
-	return new Promise<string>((resolve, reject) => {
-		const hashMessage = hash || nanocurrency.derivePublicKey(account)
-		worker.postMessage(hashMessage)
-		const handler = async (message: unknown) => {
-			// @ts-expect-error A classe é definida no .js do worker
-			if (message instanceof Error && message['blockHash'] == hash) {
-				worker.off('message', handler)
-				return reject(message)
-			}
-			try {
-				const { blockHash, work } = await workerWorkSchema.validate(message)
-				if (blockHash != hashMessage) return // Not the message we sent
-				resolve(work)
-			} catch (err) {
-				reject(err)
-			}
-			worker.off('message', handler)
+const pool = new class Pool {
+	private pool: StaticPool<typeof nanocurrency.computeWork>
+
+	private reservedPool?: typeof this.pool
+
+	constructor() {
+		function task(account: string) {
+			// eslint-disable-next-line @typescript-eslint/no-var-requires
+			const { computeWork } = require('nanocurrency')
+			return computeWork(account)
 		}
-		worker.on('message', handler)
-	})
+
+		this.pool = new StaticPool({
+			size: config.workerPoolSize <= 0 ? os.cpus().length : config.workerPoolSize,
+			task,
+		})
+
+		const reservedPoolSize = config.accountsWithReservedWorker.length
+		if (reservedPoolSize > 0) {
+			this.reservedPool = new StaticPool({
+				size: reservedPoolSize,
+				task,
+			})
+		}
+	}
+
+	getPool(account: string) {
+		return !this.reservedPool || !config.accountsWithReservedWorker.includes(account)
+			? this.pool
+			: this.reservedPool
+	}
+}
+
+async function generateWork(account: string, hash: string|null|undefined) {
+	const hashMessage = hash || nanocurrency.derivePublicKey(account)
+	const work = await pool.getPool(account).exec(hashMessage)
+	if (!work) throw new Error('Work is null')
+	return work
 }
 
 async function computeWork(account: string, hash: string|null|undefined) {

@@ -4,6 +4,8 @@ import path from 'path'
 const defaultConfig = {
 	receiveMinimum: '1000000000000000000000000',
 	customHeaders: {} as Record<string, string | number | boolean>,
+	workerPoolSize: -1,
+	accountsWithReservedWorker: [] as string[],
 }
 
 let customConfig: typeof defaultConfig|undefined = undefined
